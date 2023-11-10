@@ -1,0 +1,25 @@
+{
+  "alsologtostderr": true,
+  "project_ids": [],
+  "migrate_cluster_data": true,
+  "mysql_dsn": "",
+  "mongoDB": {
+    "host": "",
+    "port": "",
+    "username": "",
+    "password": ""
+  },
+  "bcs_api": {
+    "addr": "",
+    "token": ""
+  },
+  "bcs_api_gateway": {
+    "addr": "",
+    "token": ""
+  },
+  "kube_agent": {
+    "helm_package_path": "",
+    "namespace": "",
+    "image": ""
+  }
+}
