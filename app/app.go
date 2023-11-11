@@ -176,6 +176,7 @@ func (app *App) migrateClusters() error {
 	clusterMs := make([]types.ClusterM, 0)
 	for _, c := range clusters {
 		if c.ClusterID == "BCS-K8S-40000" {
+			blog.Infof("changed  clusterID BCS-K8S-40000 to BCS-K8S-40001")
 			c.ClusterID = "BCS-K8S-40001"
 		}
 		clusterMs = append(clusterMs, types.ClusterM{
@@ -206,7 +207,7 @@ func (app *App) migrateClusters() error {
 	_, err := app.mongoClient.Database(mongoDBNameCluster).Collection(mongoDBCollectionNameCluster).
 		InsertMany(context.Background(), documents)
 	if err != nil {
-		blog.Errorf("insert projects to mongoDB failed, %v", err)
+		blog.Errorf("insert clusters to mongoDB failed, %v", err)
 		return err
 	}
 
