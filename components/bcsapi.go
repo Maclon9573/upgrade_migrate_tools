@@ -14,6 +14,7 @@
 package components
 
 import (
+	"crypto/tls"
 	"fmt"
 	"time"
 
@@ -42,6 +43,7 @@ func GetClusterIdentifier(host, token, projectID, clusterID string) (string, err
 	resp := &IdentifierResp{}
 	result, body, errs := gorequest.New().
 		Timeout(defaultTimeOut).
+		TLSClientConfig(&tls.Config{InsecureSkipVerify: true}).
 		Get(fmt.Sprintf("%s/rest/clusters/bcs/query_by_id?project_id=%s&cluster_id=%s", host, projectID, clusterID)).
 		SetDebug(true).
 		Set("Authorization", fmt.Sprintf("Bearer %s", token)).
@@ -65,8 +67,8 @@ func GetClusterCredential(host, token, id string) (*ClusterCredentialResp, error
 	resp := &ClusterCredentialResp{}
 	result, body, errs := gorequest.New().
 		Timeout(defaultTimeOut).
+		TLSClientConfig(&tls.Config{InsecureSkipVerify: true}).
 		Get(fmt.Sprintf("%s/rest/clusters/%s/client_credentials", host, id)).
-		SetDebug(true).
 		Set("Authorization", fmt.Sprintf("Bearer %s", token)).
 		EndStruct(resp)
 
