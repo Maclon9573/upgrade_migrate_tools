@@ -26,8 +26,8 @@ const defaultTimeOut = time.Second * 60
 
 type IdentifierResp struct {
 	ID         string `json:"id"`
-	Provider   string `json:"provider"`
-	CreatorId  string `json:"creator_id"`
+	Provider   uint32 `json:"provider"`
+	CreatorId  uint32 `json:"creator_id"`
 	Identifier string `json:"identifier"`
 	CreatedAt  string `json:"created_at"`
 }
