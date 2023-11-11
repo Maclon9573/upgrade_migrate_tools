@@ -56,28 +56,28 @@ type Project struct {
 
 // ProjectM for project in MongoDB
 type ProjectM struct {
-	CreateTime  string `json:"createTime,omitempty"`
-	UpdateTime  string `json:"updateTime,omitempty"`
-	Creator     string `json:"creator,omitempty"`
-	Updater     string `json:"updater,omitempty"`
-	Managers    string `json:"managers,omitempty"`
-	ProjectID   string `json:"projectID,omitempty"`
-	Name        string `json:"name,omitempty"`
-	ProjectCode string `json:"projectCode,omitempty"`
-	UseBKRes    bool   `json:"useBKRes,omitempty"`
-	Description string `json:"description,omitempty"`
-	IsOffline   bool   `json:"isOffline,omitempty"`
-	Kind        string `json:"kind,omitempty"`
-	BusinessID  string `json:"businessID,omitempty"`
-	IsSecret    bool   `json:"isSecret,omitempty"`
-	ProjectType uint32 `json:"projectType,omitempty"`
-	DeployType  uint32 `json:"deployType,omitempty"`
-	BGID        string `json:"BGID,omitempty"`
-	BGName      string `json:"BGName,omitempty"`
-	DeptID      string `json:"deptID,omitempty"`
-	DeptName    string `json:"deptName,omitempty"`
-	CenterID    string `json:"centerID,omitempty"`
-	CenterName  string `json:"centerName,omitempty"`
+	CreateTime  string `json:"createTime" bson:"createTime"`
+	UpdateTime  string `json:"updateTime" bson:"updateTime"`
+	Creator     string `json:"creator" bson:"creator"`
+	Updater     string `json:"updater" bson:"updater"`
+	Managers    string `json:"managers" bson:"managers"`
+	ProjectID   string `json:"projectID" bson:"projectID"`
+	Name        string `json:"name" bson:"name"`
+	ProjectCode string `json:"projectCode" bson:"projectCode"`
+	UseBKRes    bool   `json:"useBKRes" bson:"useBKRes"`
+	Description string `json:"description" bson:"description"`
+	IsOffline   bool   `json:"isOffline" bson:"isOffline"`
+	Kind        string `json:"kind" bson:"kind"`
+	BusinessID  string `json:"businessID" bson:"businessID"`
+	IsSecret    bool   `json:"isSecret" bson:"isSecret"`
+	ProjectType uint32 `json:"projectType" bson:"projectType"`
+	DeployType  uint32 `json:"deployType" bson:"deployType"`
+	BGID        string `json:"bgID" bson:"bgID"`
+	BGName      string `json:"bgName" bson:"bgName"`
+	DeptID      string `json:"deptID" bson:"deptID"`
+	DeptName    string `json:"deptName" bson:"deptName"`
+	CenterID    string `json:"centerID" bson:"centerID"`
+	CenterName  string `json:"centerName" bson:"centerName"`
 }
 
 // Cluster Model : cluster info in 1.18
@@ -115,49 +115,49 @@ type Cluster struct {
 
 // ClusterM cluster info in MongoDB
 type ClusterM struct {
-	ClusterID               string                    `json:"clusterID,omitempty"`
-	ClusterName             string                    `json:"clusterName,omitempty"`
-	FederationClusterID     string                    `json:"federationClusterID,omitempty"`
-	Provider                string                    `json:"provider,omitempty"`
-	Region                  string                    `json:"region,omitempty"`
-	VpcID                   string                    `json:"vpcID,omitempty"`
-	ProjectID               string                    `json:"projectID,omitempty"`
-	BusinessID              string                    `json:"businessID,omitempty"`
-	Environment             string                    `json:"environment,omitempty"`
-	EngineType              string                    `json:"engineType,omitempty"`
-	IsExclusive             bool                      `json:"isExclusive,omitempty"`
-	ClusterType             string                    `json:"clusterType,omitempty"`
-	Labels                  map[string]string         `json:"labels,omitempty"`
-	Creator                 string                    `json:"creator,omitempty"`
-	CreateTime              string                    `json:"createTime,omitempty"`
-	UpdateTime              string                    `json:"updateTime,omitempty"`
-	BcsAddons               map[string]*BKOpsPlugin   `json:"bcsAddons,omitempty"`
-	ExtraAddons             map[string]*BKOpsPlugin   `json:"extraAddons,omitempty"`
-	SystemID                string                    `json:"systemID,omitempty"`
-	ManageType              string                    `json:"manageType,omitempty"`
-	Master                  map[string]*Node          `json:"master,omitempty"`
-	NetworkSettings         *NetworkSetting           `json:"networkSettings,omitempty"`
-	ClusterBasicSettings    *ClusterBasicSetting      `json:"clusterBasicSettings,omitempty"`
-	ClusterAdvanceSettings  *ClusterAdvanceSetting    `json:"clusterAdvanceSettings,omitempty"`
-	NodeSettings            *NodeSetting              `json:"nodeSettings,omitempty"`
-	Status                  string                    `json:"status,omitempty"`
-	Updater                 string                    `json:"updater,omitempty"`
-	NetworkType             string                    `json:"networkType,omitempty"`
-	AutoGenerateMasterNodes bool                      `json:"autoGenerateMasterNodes,omitempty"`
-	Template                []*InstanceTemplateConfig `json:"template,omitempty"`
-	ExtraInfo               map[string]string         `json:"extraInfo,omitempty"`
-	ModuleID                string                    `json:"moduleID,omitempty"`
-	ExtraClusterID          string                    `json:"extraClusterID,omitempty"`
-	IsCommonCluster         bool                      `json:"isCommonCluster,omitempty"`
-	Description             string                    `json:"description,omitempty"`
-	ClusterCategory         string                    `json:"clusterCategory,omitempty"`
-	IsShared                bool                      `json:"is_shared,omitempty"`
-	KubeConfig              string                    `json:"kubeConfig,omitempty"`
-	ImportCategory          string                    `json:"importCategory,omitempty"`
-	CloudAccountID          string                    `json:"cloudAccountID,omitempty"`
-	Area                    *CloudArea                `json:"area,omitempty"`
-	Module                  *ModuleInfo               `json:"module,omitempty"`
-	ClusterConnectSetting   *ClusterConnectSetting    `json:"clusterConnectSetting,omitempty"`
+	ClusterID               string                    `json:"clusterID,omitempty" bson:"clusterID"`
+	ClusterName             string                    `json:"clusterName,omitempty" bson:"clusterName"`
+	FederationClusterID     string                    `json:"federationClusterID,omitempty" bson:"federationClusterID"`
+	Provider                string                    `json:"provider,omitempty" bson:"provider"`
+	Region                  string                    `json:"region,omitempty" bson:"region"`
+	VpcID                   string                    `json:"vpcID,omitempty" bson:"vpcID"`
+	ProjectID               string                    `json:"projectID,omitempty" bson:"projectID"`
+	BusinessID              string                    `json:"businessID,omitempty" bson:"businessID"`
+	Environment             string                    `json:"environment,omitempty" bson:"environment"`
+	EngineType              string                    `json:"engineType,omitempty" bson:"engineType"`
+	IsExclusive             bool                      `json:"isExclusive,omitempty" bson:"isExclusive"`
+	ClusterType             string                    `json:"clusterType,omitempty" bson:"clusterType"`
+	Labels                  map[string]string         `json:"labels,omitempty" bson:"labels"`
+	Creator                 string                    `json:"creator,omitempty" bson:"creator"`
+	CreateTime              string                    `json:"createTime,omitempty" bson:"createTime"`
+	UpdateTime              string                    `json:"updateTime,omitempty" bson:"updateTime"`
+	BcsAddons               map[string]*BKOpsPlugin   `json:"bcsAddons,omitempty" bson:"bcsAddons"`
+	ExtraAddons             map[string]*BKOpsPlugin   `json:"extraAddons,omitempty" bson:"extraAddons"`
+	SystemID                string                    `json:"systemID,omitempty" bson:"systemID"`
+	ManageType              string                    `json:"manageType,omitempty" bson:"manageType"`
+	Master                  map[string]*Node          `json:"master,omitempty" bson:"master"`
+	NetworkSettings         *NetworkSetting           `json:"networkSettings,omitempty" bson:"networkSettings"`
+	ClusterBasicSettings    *ClusterBasicSetting      `json:"clusterBasicSettings,omitempty" bson:"clusterBasicSettings"`
+	ClusterAdvanceSettings  *ClusterAdvanceSetting    `json:"clusterAdvanceSettings,omitempty" bson:"clusterAdvanceSettings"`
+	NodeSettings            *NodeSetting              `json:"nodeSettings,omitempty" bson:"nodeSettings"`
+	Status                  string                    `json:"status,omitempty" bson:"status"`
+	Updater                 string                    `json:"updater,omitempty" bson:"updater"`
+	NetworkType             string                    `json:"networkType,omitempty" bson:"networkType"`
+	AutoGenerateMasterNodes bool                      `json:"autoGenerateMasterNodes,omitempty" bson:"autoGenerateMasterNodes"`
+	Template                []*InstanceTemplateConfig `json:"template,omitempty" bson:"template"`
+	ExtraInfo               map[string]string         `json:"extraInfo,omitempty" bson:"extraInfo"`
+	ModuleID                string                    `json:"moduleID,omitempty" bson:"moduleID"`
+	ExtraClusterID          string                    `json:"extraClusterID,omitempty" bson:"extraClusterID"`
+	IsCommonCluster         bool                      `json:"isCommonCluster,omitempty" bson:"isCommonCluster"`
+	Description             string                    `json:"description,omitempty" bson:"description"`
+	ClusterCategory         string                    `json:"clusterCategory,omitempty" bson:"clusterCategory"`
+	IsShared                bool                      `json:"is_shared,omitempty" bson:"isShared"`
+	KubeConfig              string                    `json:"kubeConfig,omitempty" bson:"kubeConfig"`
+	ImportCategory          string                    `json:"importCategory,omitempty" bson:"importCategory"`
+	CloudAccountID          string                    `json:"cloudAccountID,omitempty" bson:"cloudAccountID"`
+	Area                    *CloudArea                `json:"area,omitempty" bson:"area"`
+	Module                  *ModuleInfo               `json:"module,omitempty" bson:"module"`
+	ClusterConnectSetting   *ClusterConnectSetting    `json:"clusterConnectSetting,omitempty" bson:"clusterConnectSetting"`
 }
 
 // ClusterConnectSetting ApiServer内外网访问信息
@@ -243,97 +243,94 @@ type CloudDataDisk struct {
 }
 
 type BKOpsPlugin struct {
-	System              string            `json:"system,omitempty"`
-	Link                string            `json:"link,omitempty"`
-	Params              map[string]string `json:"params,omitempty"`
-	AllowSkipWhenFailed bool              `json:"allowSkipWhenFailed,omitempty"`
+	System              string            `json:"system,omitempty" bson:"system"`
+	Link                string            `json:"link,omitempty" bson:"link"`
+	Params              map[string]string `json:"params,omitempty" bson:"params"`
+	AllowSkipWhenFailed bool              `json:"allowSkipWhenFailed,omitempty" bson:"allowSkipWhenFailed"`
 }
 
 type Node struct {
-	NodeID         string `json:"nodeID,omitempty"`
-	InnerIP        string `json:"innerIP,omitempty"`
-	InstanceType   string `json:"instanceType,omitempty"`
-	CPU            uint32 `json:"CPU,omitempty"`
-	Mem            uint32 `json:"mem,omitempty"`
-	GPU            uint32 `json:"GPU,omitempty"`
-	Status         string `json:"status,omitempty"`
-	ZoneID         string `json:"zoneID,omitempty"`
-	NodeGroupID    string `json:"nodeGroupID,omitempty"`
-	ClusterID      string `json:"clusterID,omitempty"`
-	VPC            string `json:"VPC,omitempty"`
-	Region         string `json:"region,omitempty"`
-	Passwd         string `json:"passwd,omitempty"`
-	Zone           uint32 `json:"zone,omitempty"`
-	DeviceID       string `json:"deviceID,omitempty"`
-	NodeTemplateID string `json:"nodeTemplateID,omitempty"`
-	NodeType       string `json:"nodeType,omitempty"`
-	NodeName       string `json:"nodeName,omitempty"`
-	InnerIPv6      string `json:"innerIPv6,omitempty"`
-	ZoneName       string `json:"zoneName,omitempty"`
-	TaskID         string `json:"taskID,omitempty"`
+	NodeID         string `json:"nodeID,omitempty" bson:"nodeID"`
+	InnerIP        string `json:"innerIP,omitempty" bson:"innerIP"`
+	InstanceType   string `json:"instanceType,omitempty" bson:"instanceType"`
+	CPU            uint32 `json:"CPU,omitempty" bson:"CPU"`
+	Mem            uint32 `json:"mem,omitempty" bson:"mem"`
+	GPU            uint32 `json:"GPU,omitempty" bson:"GPU"`
+	Status         string `json:"status,omitempty" bson:"status"`
+	ZoneID         string `json:"zoneID,omitempty" bson:"zoneID"`
+	NodeGroupID    string `json:"nodeGroupID,omitempty" bson:"nodeGroupID"`
+	ClusterID      string `json:"clusterID,omitempty" bson:"clusterID"`
+	VPC            string `json:"VPC,omitempty" bson:"VPC"`
+	Region         string `json:"region,omitempty" bson:"region"`
+	Passwd         string `json:"passwd,omitempty" bson:"passwd"`
+	Zone           uint32 `json:"zone,omitempty" bson:"zone"`
+	DeviceID       string `json:"deviceID,omitempty" bson:"deviceID"`
+	NodeTemplateID string `json:"nodeTemplateID,omitempty" bson:"nodeTemplateID"`
+	NodeType       string `json:"nodeType,omitempty" bson:"nodeType"`
+	NodeName       string `json:"nodeName,omitempty" bson:"nodeName"`
+	InnerIPv6      string `json:"innerIPv6,omitempty" bson:"innerIPv6"`
+	ZoneName       string `json:"zoneName,omitempty" bson:"zoneName"`
+	TaskID         string `json:"taskID,omitempty" bson:"taskID"`
 }
 
 type NetworkSetting struct {
-	ClusterIPv4CIDR     string   `json:"clusterIPv4CIDR,omitempty"`
-	ServiceIPv4CIDR     string   `json:"serviceIPv4CIDR,omitempty"`
-	MaxNodePodNum       uint32   `json:"maxNodePodNum,omitempty"`
-	MaxServiceNum       uint32   `json:"maxServiceNum,omitempty"`
-	EnableVPCCni        bool     `json:"enableVPCCni,omitempty"`
-	EniSubnetIDs        []string `json:"eniSubnetIDs,omitempty"`
-	IsStaticIpMode      bool     `json:"isStaticIpMode,omitempty"`
-	ClaimExpiredSeconds uint32   `json:"claimExpiredSeconds,omitempty"`
-	MultiClusterCIDR    []string `json:"multiClusterCIDR,omitempty"`
-	CidrStep            uint32   `json:"cidrStep,omitempty"`
-	ClusterIpType       string   `json:"clusterIpType,omitempty"`
-	ClusterIPv6CIDR     string   `json:"clusterIPv6CIDR,omitempty"`
-	ServiceIPv6CIDR     string   `json:"serviceIPv6CIDR,omitempty"`
+	ClusterIPv4CIDR     string   `json:"clusterIPv4CIDR,omitempty" bson:"clusterIPv4CIDR"`
+	ServiceIPv4CIDR     string   `json:"serviceIPv4CIDR,omitempty" bson:"serviceIPv4CIDR"`
+	MaxNodePodNum       uint32   `json:"maxNodePodNum,omitempty" bson:"maxNodePodNum"`
+	MaxServiceNum       uint32   `json:"maxServiceNum,omitempty" bson:"maxServiceNum"`
+	EnableVPCCni        bool     `json:"enableVPCCni,omitempty" bson:"enableVPCCni"`
+	EniSubnetIDs        []string `json:"eniSubnetIDs,omitempty" bson:"eniSubnetIDs"`
+	IsStaticIpMode      bool     `json:"isStaticIpMode,omitempty" bson:"isStaticIpMode"`
+	ClaimExpiredSeconds uint32   `json:"claimExpiredSeconds,omitempty" bson:"claimExpiredSeconds"`
+	MultiClusterCIDR    []string `json:"multiClusterCIDR,omitempty" bson:"multiClusterCIDR"`
+	CidrStep            uint32   `json:"cidrStep,omitempty" bson:"cidrStep"`
+	ClusterIpType       string   `json:"clusterIpType,omitempty" bson:"clusterIpType"`
+	ClusterIPv6CIDR     string   `json:"clusterIPv6CIDR,omitempty" bson:"clusterIPv6CIDR"`
+	ServiceIPv6CIDR     string   `json:"serviceIPv6CIDR,omitempty" bson:"serviceIPv6CIDR"`
 }
 
 type ClusterBasicSetting struct {
-	OS                        string            `json:"OS,omitempty"`
-	Version                   string            `json:"version,omitempty"`
-	ClusterTags               map[string]string `json:"clusterTags,omitempty"`
-	VersionName               string            `json:"versionName,omitempty"`
-	SubnetID                  string            `json:"subnetID,omitempty"`
-	ClusterLevel              string            `json:"clusterLevel,omitempty"`
-	IsAutoUpgradeClusterLevel bool              `json:"isAutoUpgradeClusterLevel,omitempty"`
+	OS                        string            `json:"OS,omitempty" bson:"OS"`
+	Version                   string            `json:"version,omitempty" bson:"version"`
+	ClusterTags               map[string]string `json:"clusterTags,omitempty" bson:"clusterTags"`
+	VersionName               string            `json:"versionName,omitempty" bson:"versionName"`
+	SubnetID                  string            `json:"subnetID,omitempty" bson:"subnetID"`
+	ClusterLevel              string            `json:"clusterLevel,omitempty" bson:"clusterLevel"`
+	IsAutoUpgradeClusterLevel bool              `json:"isAutoUpgradeClusterLevel,omitempty" bson:"isAutoUpgradeClusterLevel"`
 }
 
 type ClusterAdvanceSetting struct {
-	IPVS                 bool              `json:"IPVS,omitempty"`
-	ContainerRuntime     string            `json:"containerRuntime,omitempty"`
-	RuntimeVersion       string            `json:"runtimeVersion,omitempty"`
-	ExtraArgs            map[string]string `json:"extraArgs,omitempty"`
-	NetworkType          string            `json:"networkType,omitempty"`
-	DeletionProtection   bool              `json:"deletionProtection,omitempty"`
-	AuditEnabled         bool              `json:"auditEnabled,omitempty"`
-	EnableHa             bool              `json:"enableHa,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}          `json:"-" bson:"-"`
-	XXX_unrecognized     []byte            `json:"-" bson:"-"`
-	XXX_sizecache        int32             `json:"-" bson:"-"`
+	IPVS               bool              `json:"IPVS,omitempty" bson:"IPVS"`
+	ContainerRuntime   string            `json:"containerRuntime,omitempty" bson:"containerRuntime"`
+	RuntimeVersion     string            `json:"runtimeVersion,omitempty" bson:"runtimeVersion"`
+	ExtraArgs          map[string]string `json:"extraArgs,omitempty" bson:"extraArgs"`
+	NetworkType        string            `json:"networkType,omitempty" bson:"networkType"`
+	DeletionProtection bool              `json:"deletionProtection,omitempty" bson:"deletionProtection"`
+	AuditEnabled       bool              `json:"auditEnabled,omitempty" bson:"auditEnabled"`
+	EnableHa           bool              `json:"enableHa,omitempty" bson:"enableHa"`
 }
 
 type NodeSetting struct {
-	DockerGraphPath   string            `json:"dockerGraphPath,omitempty"`
-	MountTarget       string            `json:"mountTarget,omitempty"`
-	UnSchedulable     uint32            `json:"unSchedulable,omitempty"`
-	Labels            map[string]string `json:"labels,omitempty"`
-	ExtraArgs         map[string]string `json:"extraArgs,omitempty"`
-	InitLoginUsername string            `json:"initLoginUsername,omitempty"`
-	InitLoginPassword string            `json:"initLoginPassword,omitempty"`
-	KeyPair           *KeyInfo          `json:"keyPair,omitempty"`
-	Taints            []*Taint          `json:"taints,omitempty"`
+	DockerGraphPath   string            `json:"dockerGraphPath,omitempty" bson:"dockerGraphPath"`
+	MountTarget       string            `json:"mountTarget,omitempty" bson:"mountTarget"`
+	UnSchedulable     uint32            `json:"unSchedulable,omitempty" bson:"unSchedulable"`
+	Labels            map[string]string `json:"labels,omitempty" bson:"labels"`
+	ExtraArgs         map[string]string `json:"extraArgs,omitempty" bson:"extraArgs"`
+	InitLoginUsername string            `json:"initLoginUsername,omitempty" bson:"initLoginUsername"`
+	InitLoginPassword string            `json:"initLoginPassword,omitempty" bson:"initLoginPassword"`
+	KeyPair           *KeyInfo          `json:"keyPair,omitempty" bson:"keyPair"`
+	Taints            []*Taint          `json:"taints,omitempty" bson:"taints"`
 }
 
 type KeyInfo struct {
-	KeyID     string `json:"keyID,omitempty"`
-	KeySecret string `json:"keySecret,omitempty"`
-	KeyPublic string `json:"keyPublic,omitempty"`
+	KeyID     string `json:"keyID,omitempty" bson:"keyID"`
+	KeySecret string `json:"keySecret,omitempty" bson:"keySecret"`
+	KeyPublic string `json:"keyPublic,omitempty" bson:"keyPublic"`
 }
 
 // Taint for node taints
 type Taint struct {
-	Key    string `json:"key,omitempty"`
-	Value  string `json:"value,omitempty"`
-	Effect string `json:"effect,omitempty"`
+	Key    string `json:"key,omitempty" bson:"key"`
+	Value  string `json:"value,omitempty" bson:"value"`
+	Effect string `json:"effect,omitempty" bson:"effect"`
 }

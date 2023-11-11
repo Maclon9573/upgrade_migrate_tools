@@ -117,8 +117,9 @@ func (app *App) migrateProjects() error {
 		app.sqlClient.Model(&types.Project{}).Find(&projects)
 	}
 
+	blog.Debug("got %d projects from database", len(projects))
+
 	projectMs := make([]types.ProjectM, 0)
-	interfaces := make([]interface{}, 0)
 	for _, p := range projects {
 		dpt, _ := strconv.Atoi(p.DeployType)
 		projectMs = append(projectMs, types.ProjectM{
@@ -147,18 +148,19 @@ func (app *App) migrateProjects() error {
 		})
 	}
 
-	for _, v := range projectMs {
-		interfaces = append(interfaces, v)
+	var documents []interface{}
+	for _, p := range projectMs {
+		documents = append(documents, p)
 	}
 
 	_, err := app.mongoClient.Database(mongoDBNameProject).Collection(mongoDBCollectionNameProject).
-		InsertMany(context.Background(), interfaces)
+		InsertMany(context.Background(), documents)
 	if err != nil {
 		blog.Errorf("insert projects to mongoDB failed, %v", err)
 		return err
 	}
 
-	blog.Infof("migrated %d projects", len(interfaces))
+	blog.Infof("migrated %d projects", len(projectMs))
 
 	return nil
 }
@@ -172,8 +174,10 @@ func (app *App) migrateClusters() error {
 	}
 
 	clusterMs := make([]types.ClusterM, 0)
-	interfaces := make([]interface{}, 0)
 	for _, c := range clusters {
+		if c.ClusterID == "BCS-K8S-40000" {
+			c.ClusterID = "BCS-K8S-40001"
+		}
 		clusterMs = append(clusterMs, types.ClusterM{
 			CreateTime:  c.CreatedAt.Format("2006-01-02T15:04:05Z"),
 			UpdateTime:  c.UpdatedAt.Format("2006-01-02T15:04:05Z"),
@@ -194,18 +198,19 @@ func (app *App) migrateClusters() error {
 		})
 	}
 
+	var documents []interface{}
 	for _, v := range clusterMs {
-		interfaces = append(interfaces, v)
+		documents = append(documents, v)
 	}
 
 	_, err := app.mongoClient.Database(mongoDBNameCluster).Collection(mongoDBCollectionNameCluster).
-		InsertMany(context.Background(), interfaces)
+		InsertMany(context.Background(), documents)
 	if err != nil {
 		blog.Errorf("insert projects to mongoDB failed, %v", err)
 		return err
 	}
 
-	blog.Infof("migrated %d clusters", len(interfaces))
+	blog.Infof("migrated %d clusters", len(documents))
 
 	for _, v := range clusterMs {
 		err = deployKubeAgent(app.op, v.ProjectID, v.ClusterID)
@@ -216,15 +221,6 @@ func (app *App) migrateClusters() error {
 
 	return nil
 }
-
-//func deployKubeAgent(op options.UpgradeOption, projectID, clusterID string) error {
-//	clientSet, err := generateClientSet(op, projectID, clusterID)
-//	if err != nil {
-//		return err
-//	}
-//	clientSet.AppsV1().Deployments().Create()
-//	return nil
-//}
 
 func deployKubeAgent(op *options.UpgradeOption, projectID, clusterID string) error {
 	host := op.BCSApi.Addr
@@ -342,7 +338,6 @@ func (app *App) initMongoClient() error {
 		app.op.MongoDB.Host == "" || app.op.MongoDB.Port == 0 {
 		return fmt.Errorf("lost mongo info in config")
 	}
-
 	clientOptions := mongooptions.Client().ApplyURI(fmt.Sprintf("mongodb://%s:%s@%s:%d",
 		app.op.MongoDB.Username,
 		app.op.MongoDB.Password,
