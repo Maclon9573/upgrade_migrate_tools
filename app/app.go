@@ -95,9 +95,11 @@ func (app *App) DoMigrate() error {
 		}
 	}()
 
-	err = app.migrateProjects()
-	if err != nil {
-		return err
+	if app.op.MigrateClusterData {
+		err = app.migrateProjects()
+		if err != nil {
+			return err
+		}
 	}
 
 	// migrate clusters in normal status
@@ -202,22 +204,24 @@ func (app *App) migrateClusters() error {
 		})
 	}
 
-	var documents []interface{}
-	for _, v := range clusterMs {
-		documents = append(documents, v)
+	if app.op.MigrateClusterData {
+		var documents []interface{}
+		for _, v := range clusterMs {
+			documents = append(documents, v)
+		}
+
+		_, err := app.mongoClient.Database(mongoDBNameCluster).Collection(mongoDBCollectionNameCluster).
+			InsertMany(context.Background(), documents)
+		if err != nil {
+			blog.Errorf("insert clusters to mongoDB failed, %v", err)
+			return err
+		}
+
+		blog.Infof("migrated %d clusters", len(documents))
 	}
 
-	_, err := app.mongoClient.Database(mongoDBNameCluster).Collection(mongoDBCollectionNameCluster).
-		InsertMany(context.Background(), documents)
-	if err != nil {
-		blog.Errorf("insert clusters to mongoDB failed, %v", err)
-		return err
-	}
-
-	blog.Infof("migrated %d clusters", len(documents))
-
 	for _, v := range clusterMs {
-		err = deployKubeAgent(app.op, v.ProjectID, clusterIDMap[v.ClusterID])
+		err := deployKubeAgent(app.op, v.ProjectID, clusterIDMap[v.ClusterID])
 		if err != nil {
 			blog.Errorf("deployKubeAgent for cluster %s failed, %v", clusterIDMap[v.ClusterID], err)
 		}
