@@ -174,10 +174,13 @@ func (app *App) migrateClusters() error {
 	}
 
 	clusterMs := make([]types.ClusterM, 0)
+	clusterIDMap := make(map[string]string, 0)
 	for _, c := range clusters {
 		if c.ClusterID == "BCS-K8S-40000" {
-			blog.Infof("changed  clusterID BCS-K8S-40000 to BCS-K8S-40001")
 			c.ClusterID = "BCS-K8S-40001"
+			clusterIDMap["BCS-K8S-40001"] = "BCS-K8S-40000"
+
+			blog.Infof("changed  clusterID BCS-K8S-40000 to BCS-K8S-40001")
 		}
 		clusterMs = append(clusterMs, types.ClusterM{
 			CreateTime:  c.CreatedAt.Format("2006-01-02T15:04:05Z"),
@@ -214,9 +217,9 @@ func (app *App) migrateClusters() error {
 	blog.Infof("migrated %d clusters", len(documents))
 
 	for _, v := range clusterMs {
-		err = deployKubeAgent(app.op, v.ProjectID, v.ClusterID)
+		err = deployKubeAgent(app.op, v.ProjectID, clusterIDMap[v.ClusterID])
 		if err != nil {
-			blog.Errorf("deployKubeAgent for cluster %s failed, %v", v.ClusterID, err)
+			blog.Errorf("deployKubeAgent for cluster %s failed, %v", clusterIDMap[v.ClusterID], err)
 		}
 	}
 
