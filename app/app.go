@@ -236,14 +236,14 @@ func deployKubeAgent(op *options.UpgradeOption, projectID, clusterID string) err
 		return err
 	}
 
-	resp, err := components.GetClusterCredential(host, token, id)
+	resp, err := components.GetClusterCredential(host, token, id.ID)
 	if err != nil {
 		blog.Errorf("get cluster %s credential failed, %v", clusterID, err)
 		return err
 	}
 
 	config := &rest.Config{
-		Host: fmt.Sprintf("%s/tunnels/clusters/%s", host, id),
+		Host: fmt.Sprintf("%s/tunnels/clusters/%s", host, id.Identifier),
 		TLSClientConfig: rest.TLSClientConfig{
 			CertData: []byte(base64.StdEncoding.EncodeToString([]byte(resp.CaCert))),
 		},

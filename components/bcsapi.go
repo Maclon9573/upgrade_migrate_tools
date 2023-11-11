@@ -39,7 +39,7 @@ type ClusterCredentialResp struct {
 	CaCert     string `json:"cacert_data"`
 }
 
-func GetClusterIdentifier(host, token, projectID, clusterID string) (string, error) {
+func GetClusterIdentifier(host, token, projectID, clusterID string) (*IdentifierResp, error) {
 	resp := &IdentifierResp{}
 	result, body, errs := gorequest.New().
 		Timeout(defaultTimeOut).
@@ -51,16 +51,16 @@ func GetClusterIdentifier(host, token, projectID, clusterID string) (string, err
 
 	if len(errs) > 0 {
 		blog.Errorf("call BCS API failed: %v", errs[0])
-		return "", errs[0]
+		return nil, errs[0]
 	}
 
 	if result.StatusCode != 200 {
 		errMsg := fmt.Errorf("call BCS API error: code[%d], %s",
 			result.StatusCode, string(body))
-		return "", errMsg
+		return nil, errMsg
 	}
 
-	return resp.Identifier, nil
+	return resp, nil
 }
 
 func GetClusterCredential(host, token, id string) (*ClusterCredentialResp, error) {
