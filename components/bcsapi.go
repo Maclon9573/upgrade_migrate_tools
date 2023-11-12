@@ -46,7 +46,6 @@ func GetClusterIdentifier(host, token, projectID, clusterID string) (*Identifier
 		SetDebug(false).
 		TLSClientConfig(&tls.Config{InsecureSkipVerify: true}).
 		Get(fmt.Sprintf("%s/rest/clusters/bcs/query_by_id?project_id=%s&cluster_id=%s", host, projectID, clusterID)).
-		SetDebug(true).
 		Set("Authorization", fmt.Sprintf("Bearer %s", token)).
 		EndStruct(resp)
 
