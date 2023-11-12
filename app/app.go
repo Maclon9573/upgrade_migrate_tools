@@ -18,9 +18,11 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
-	"log"
+	v1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -30,10 +32,7 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	"go.mongodb.org/mongo-driver/mongo"
 	mongooptions "go.mongodb.org/mongo-driver/mongo/options"
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/chart/loader"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 
 	"github.com/Tencent/bk-bcs/install/upgradetool/components"
@@ -46,6 +45,8 @@ const (
 	mongoDBNameCluster           = "clustermanager"
 	mongoDBCollectionNameProject = "bcsproject_project"
 	mongoDBCollectionNameCluster = "bcsclustermanagerv2_cluster"
+
+	kubeAgentSecretName = "bcs-client-bcs-kube-agent"
 )
 
 type App struct {
@@ -254,56 +255,236 @@ func deployKubeAgent(op *options.UpgradeOption, projectID, clusterID string) err
 		BearerToken: resp.UserToken,
 	}
 
-	chart, err := loader.Load(op.KubeAgent.HelmPackagePath)
+	// 创建 clientset
+	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		blog.Errorf("load helm package failed, %v", err)
 		return err
 	}
 
+	err = createKubeAgentSecret(op, clientset)
+	if err != nil {
+		return err
+	}
+
+	err = createKubeAgent(op, clientset, clusterID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func createKubeAgentSecret(op *options.UpgradeOption, clientset *kubernetes.Clientset) error {
+	restConfig := &rest.Config{
+		Host:        op.BCSApiGateway.Addr + "/clusters/" + op.BKClusterID,
+		BearerToken: op.BCSApiGateway.Token,
+		TLSClientConfig: rest.TLSClientConfig{
+			Insecure: true,
+		},
+		QPS:   100,
+		Burst: 100,
+	}
+
+	client, err := kubernetes.NewForConfig(restConfig)
+	if err != nil {
+		return err
+	}
+	// get secret from blueking cluster
+	secret, err := client.CoreV1().Secrets("bcs-system").
+		Get(context.Background(), op.BCSCertName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	_, err = clientset.CoreV1().Secrets(op.KubeAgent.Namespace).Create(context.Background(), secret, metav1.CreateOptions{})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func createKubeAgent(op *options.UpgradeOption, clientset *kubernetes.Clientset, clusterID string) error {
 	imageInfo := strings.Split(op.KubeAgent.Image, ":")
 	if len(imageInfo) != 2 {
 		return fmt.Errorf("invalid bcs kube agent image")
 	}
-
-	releaseName := fmt.Sprintf("bcs-kube-agent-%s", imageInfo[1])
-	namespace := op.KubeAgent.Namespace
-	actionConfig := new(action.Configuration)
-	if err := actionConfig.Init(GetHelmConfig(config.Host, config.BearerToken, "", namespace),
-		namespace, os.Getenv("HELM_DRIVER"), log.Printf); err != nil {
-		blog.Errorf("init helm config failed, %v", err)
-		return err
-	}
-
-	iCli := action.NewInstall(actionConfig)
-	iCli.Namespace = namespace
-	iCli.ReleaseName = releaseName
+	name := fmt.Sprintf("bcs-kube-agent-%s", imageInfo[1])
 
 	gAddr := strings.Split(op.BCSApiGateway.Addr, "//")
 	if len(gAddr) != 2 {
 		return fmt.Errorf("invalid bcs api gateway address")
 	}
+	deployment := &v1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: v1.DeploymentSpec{
+			Replicas: func(a int32) *int32 { return &a }(1),
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app": name,
+				},
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app": name,
+					},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "bcs-kube-agent",
+							Image: op.KubeAgent.Image,
+							Args: []string{
+								fmt.Sprintf("--bke-address=wss://%s", gAddr[1]),
+								fmt.Sprintf("--cluster-id=%s", clusterID),
+								fmt.Sprintf("--insecureSkipVerify=%s", "true"),
+								fmt.Sprintf("--verbosity=%d", 3),
+								fmt.Sprintf("--use-websocket=%s", "true"),
+								fmt.Sprintf("--websocket-path=%s", "/bcsapi/v4/clustermanager/v1/websocket/connect"),
+							},
+							Env: []corev1.EnvVar{
+								{
+									Name:  "USER_TOKEN",
+									Value: op.BCSApiGateway.Token,
+								},
+								{
+									Name:  "CLIENT_CA",
+									Value: "/data/bcs/cert/bcs/bcs-ca.crt",
+								},
+								{
+									Name:  "CLIENT_CERT",
+									Value: "/data/bcs/cert/bcs/bcs-client.crt",
+								},
+								{
+									Name:  "CLIENT_KEY",
+									Value: "/data/bcs/cert/bcs/bcs-client.key",
+								},
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "bcs-certs",
+									MountPath: "/data/bcs/cert/bcs",
+								},
+							},
+						},
+					},
+					DeprecatedServiceAccount: "bcs-kube-agent",
+					ServiceAccountName:       "bcs-kube-agent",
+					Volumes: []corev1.Volume{
+						{
+							Name: "bcs-certs",
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName: kubeAgentSecretName,
+									Items: []corev1.KeyToPath{
+										{
+											Key:  "ca.crt",
+											Path: "bcs-ca.crt",
+										},
+										{
+											Key:  "tls.crt",
+											Path: "bcs-client.crt",
+										},
+										{
+											Key:  "tls.key",
+											Path: "bcs-client.key",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 
-	values := make(map[string]interface{}, 0)
-	values["image.registry"] = ""
-	values["image.repository"] = imageInfo[0]
-	values["image.tag"] = imageInfo[1]
-	values["args.BK_BCS_API"] = fmt.Sprintf("wss://%s", gAddr[1])
-	values["args.BK_BCS_clusterId"] = clusterID
-	values["args.BK_BCS_insecureSkipVerify"] = "true"
-	values["args.BK_BCS_kubeAgentWSTunnel"] = "true"
-	values["args.BK_BCS_websocketPath"] = "/bcsapi/v4/clustermanager/v1/websocket/connect"
-	values["args.BK_BCS_APIToken"] = op.BCSApiGateway.Token
-
-	_, err = iCli.Run(chart, values)
+	_, err := clientset.AppsV1().Deployments(op.KubeAgent.Namespace).
+		Create(context.Background(), deployment, metav1.CreateOptions{})
 	if err != nil {
-		blog.Errorf("install helm package failed, %v", err)
 		return err
 	}
 
-	blog.Infof("install release %s/%s success", namespace, releaseName)
-
 	return nil
 }
+
+//func deployKubeAgentByHelm(op *options.UpgradeOption, projectID, clusterID string) error {
+//	host := op.BCSApi.Addr
+//	token := op.BCSApi.Token
+//
+//	id, err := components.GetClusterIdentifier(host, token, projectID, clusterID)
+//	if err != nil {
+//		blog.Errorf("get cluster %s identifier failed, %v", clusterID, err)
+//		return err
+//	}
+//
+//	resp, err := components.GetClusterCredential(host, token, id.ID)
+//	if err != nil {
+//		blog.Errorf("get cluster %s credential failed, %v", clusterID, err)
+//		return err
+//	}
+//
+//	config := &rest.Config{
+//		Host: fmt.Sprintf("%s/tunnels/clusters/%s", host, id.Identifier),
+//		TLSClientConfig: rest.TLSClientConfig{
+//			CertData: []byte(base64.StdEncoding.EncodeToString([]byte(resp.CaCert))),
+//		},
+//		BearerToken: resp.UserToken,
+//	}
+//
+//	chart, err := loader.Load(op.KubeAgent.HelmPackagePath)
+//	if err != nil {
+//		blog.Errorf("load helm package failed, %v", err)
+//		return err
+//	}
+//
+//	imageInfo := strings.Split(op.KubeAgent.Image, ":")
+//	if len(imageInfo) != 2 {
+//		return fmt.Errorf("invalid bcs kube agent image")
+//	}
+//
+//	releaseName := fmt.Sprintf("bcs-kube-agent-%s", imageInfo[1])
+//	namespace := op.KubeAgent.Namespace
+//	actionConfig := new(action.Configuration)
+//	if err := actionConfig.Init(GetHelmConfig(config.Host, config.BearerToken, "", namespace),
+//		namespace, os.Getenv("HELM_DRIVER"), log.Printf); err != nil {
+//		blog.Errorf("init helm config failed, %v", err)
+//		return err
+//	}
+//
+//	iCli := action.NewInstall(actionConfig)
+//	iCli.Namespace = namespace
+//	iCli.ReleaseName = releaseName
+//
+//	gAddr := strings.Split(op.BCSApiGateway.Addr, "//")
+//	if len(gAddr) != 2 {
+//		return fmt.Errorf("invalid bcs api gateway address")
+//	}
+//
+//	values := make(map[string]interface{}, 0)
+//	values["image.registry"] = ""
+//	values["image.repository"] = imageInfo[0]
+//	values["image.tag"] = imageInfo[1]
+//	values["args.BK_BCS_API"] = fmt.Sprintf("wss://%s", gAddr[1])
+//	values["args.BK_BCS_clusterId"] = clusterID
+//	values["args.BK_BCS_insecureSkipVerify"] = "true"
+//	values["args.BK_BCS_kubeAgentWSTunnel"] = "true"
+//	values["args.BK_BCS_websocketPath"] = "/bcsapi/v4/clustermanager/v1/websocket/connect"
+//	values["args.BK_BCS_APIToken"] = op.BCSApiGateway.Token
+//
+//	_, err = iCli.Run(chart, values)
+//	if err != nil {
+//		blog.Errorf("install helm package failed, %v", err)
+//		return err
+//	}
+//
+//	blog.Infof("install release %s/%s success", namespace, releaseName)
+//
+//	return nil
+//}
 
 func GetHelmConfig(host, userToken, context, namespace string) *genericclioptions.ConfigFlags {
 	cf := genericclioptions.NewConfigFlags(true)

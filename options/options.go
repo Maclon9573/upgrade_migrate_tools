@@ -26,6 +26,8 @@ type UpgradeOption struct {
 
 	BCSApi        BCSConf   `json:"bcs_api"`
 	BCSApiGateway BCSConf   `json:"bcs_api_gateway"`
+	BCSCertName   string    `json:"bcs_cert_name"`
+	BKClusterID   string    `json:"bk_cluster_id"`
 	KubeAgent     KubeAgent `json:"kube_agent"`
 	K8SWatch      K8SWatch  `json:"k8s_watch"`
 }
