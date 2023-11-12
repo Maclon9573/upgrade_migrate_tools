@@ -297,6 +297,7 @@ func createKubeAgentSecret(op *options.UpgradeOption, clientset *kubernetes.Clie
 		return err
 	}
 
+	secret.Namespace = op.KubeAgent.Namespace
 	_, err = clientset.CoreV1().Secrets(op.KubeAgent.Namespace).Create(context.Background(), secret, metav1.CreateOptions{})
 	if err != nil {
 		return err
