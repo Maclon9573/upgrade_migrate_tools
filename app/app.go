@@ -222,7 +222,7 @@ func (app *App) migrateClusters() error {
 	}
 
 	for _, v := range clusterMs {
-		err := deployKubeAgent(app.op, v.ProjectID, clusterIDMap[v.ClusterID])
+		err := deployKubeAgent(app.op, v, v.ProjectID, clusterIDMap[v.ClusterID])
 		if err != nil {
 			blog.Errorf("deployKubeAgent for cluster %s failed, %v", clusterIDMap[v.ClusterID], err)
 		}
@@ -231,7 +231,7 @@ func (app *App) migrateClusters() error {
 	return nil
 }
 
-func deployKubeAgent(op *options.UpgradeOption, projectID, clusterID string) error {
+func deployKubeAgent(op *options.UpgradeOption, cluster types.ClusterM, projectID, clusterID string) error {
 	host := op.BCSApi.Addr
 	token := op.BCSApi.Token
 
@@ -267,7 +267,7 @@ func deployKubeAgent(op *options.UpgradeOption, projectID, clusterID string) err
 		return err
 	}
 
-	err = createKubeAgent(op, clientset, clusterID)
+	err = createKubeAgent(op, clientset, cluster.ClusterID)
 	if err != nil {
 		return err
 	}
