@@ -18,11 +18,13 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
+	"go.mongodb.org/mongo-driver/bson"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -125,42 +127,32 @@ func (app *App) migrateProjects() error {
 	projectMs := make([]types.ProjectM, 0)
 	for _, p := range projects {
 		dpt, _ := strconv.Atoi(p.DeployType)
-		projectMs = append(projectMs, types.ProjectM{
-			CreateTime:  p.CreatedAt.Format("2006-01-02T15:04:05Z"),
-			UpdateTime:  p.UpdatedAt.Format("2006-01-02T15:04:05Z"),
-			Creator:     p.Creator,
-			Updater:     p.Updator,
-			Managers:    p.Creator,
-			ProjectID:   p.ProjectID,
-			Name:        p.Name,
-			ProjectCode: p.EnglishName,
-			UseBKRes:    p.UseBK,
-			Description: p.Description,
-			IsOffline:   p.IsOfflined,
-			Kind:        strconv.Itoa(int(p.Kind)),
-			BusinessID:  strconv.Itoa(int(p.CCAppID)),
-			IsSecret:    p.IsSecrecy,
-			ProjectType: uint32(p.ProjectType),
-			DeployType:  uint32(dpt),
-			BGID:        strconv.Itoa(int(p.BGID)),
-			BGName:      p.BGName,
-			DeptID:      strconv.Itoa(int(p.DeptID)),
-			DeptName:    p.DeptName,
-			CenterID:    strconv.Itoa(int(p.CenterID)),
-			CenterName:  p.CenterName,
-		})
-	}
-
-	var documents []interface{}
-	for _, p := range projectMs {
-		documents = append(documents, p)
-	}
-
-	_, err := app.mongoClient.Database(mongoDBNameProject).Collection(mongoDBCollectionNameProject).
-		InsertMany(context.Background(), documents)
-	if err != nil {
-		blog.Errorf("insert projects to mongoDB failed, %v", err)
-		return err
+		_, err := components.CreateProject(app.op.BCSApiGateway.Addr, app.op.BCSApiGateway.Token,
+			&components.CreateProjectRequest{
+				Creator:     p.Creator,
+				ProjectID:   p.ProjectID,
+				Name:        p.Name,
+				ProjectCode: p.EnglishName,
+				UseBKRes:    p.UseBK,
+				Description: p.Description,
+				IsOffline:   p.IsOfflined,
+				Kind:        strconv.Itoa(int(p.Kind)),
+				BusinessID:  strconv.Itoa(int(p.CCAppID)),
+				IsSecret:    p.IsSecrecy,
+				ProjectType: uint32(p.ProjectType),
+				DeployType:  uint32(dpt),
+				BGID:        strconv.Itoa(int(p.BGID)),
+				BGName:      p.BGName,
+				DeptID:      strconv.Itoa(int(p.DeptID)),
+				DeptName:    p.DeptName,
+				CenterID:    strconv.Itoa(int(p.CenterID)),
+				CenterName:  p.CenterName,
+			})
+		if err != nil {
+			blog.Errorf("create project %s[%s] failed, %v", p.Name, p.ProjectID, err)
+			continue
+		}
+		blog.Infof("create project %s[%s] success", p.Name, p.ProjectID)
 	}
 
 	blog.Infof("migrated %d projects", len(projectMs))
@@ -169,6 +161,7 @@ func (app *App) migrateProjects() error {
 }
 
 func (app *App) migrateClusters() error {
+	clusterCol := app.mongoClient.Database(mongoDBNameCluster).Collection(mongoDBCollectionNameCluster)
 	clusters := make([]types.Cluster, 0)
 	if len(app.op.ProjectIDs) != 0 {
 		app.sqlClient.Model(&types.Cluster{}).Where("project_id IN (?) AND status = ?", app.op.ProjectIDs, "normal").Find(&clusters)
@@ -176,16 +169,9 @@ func (app *App) migrateClusters() error {
 		app.sqlClient.Model(&types.Cluster{}).Where("status = ?", "normal").Find(&clusters)
 	}
 
-	clusterMs := make([]types.ClusterM, 0)
-	clusterIDMap := make(map[string]string, 0)
+	dupClusters := make([]types.ClusterM, 0)
 	for _, c := range clusters {
-		if c.ClusterID == "BCS-K8S-40000" {
-			c.ClusterID = "BCS-K8S-40001"
-			clusterIDMap["BCS-K8S-40001"] = "BCS-K8S-40000"
-
-			blog.Infof("changed  clusterID BCS-K8S-40000 to BCS-K8S-40001")
-		}
-		clusterMs = append(clusterMs, types.ClusterM{
+		clusterM := types.ClusterM{
 			CreateTime:  c.CreatedAt.Format("2006-01-02T15:04:05Z"),
 			UpdateTime:  c.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 			ClusterID:   c.ClusterID,
@@ -202,36 +188,96 @@ func (app *App) migrateClusters() error {
 			Status:      "RUNNING",
 			NetworkType: "overlay",
 			Description: c.Description,
-		})
-	}
-
-	if app.op.MigrateClusterData {
-		var documents []interface{}
-		for _, v := range clusterMs {
-			documents = append(documents, v)
 		}
 
-		_, err := app.mongoClient.Database(mongoDBNameCluster).Collection(mongoDBCollectionNameCluster).
-			InsertMany(context.Background(), documents)
+		if app.op.MigrateClusterData {
+			_, err := clusterCol.InsertOne(context.Background(), clusterM)
+			if err != nil {
+				if strings.Contains(err.Error(), "duplicate key") {
+					existCluster := types.ClusterM{}
+					errFind := clusterCol.FindOne(
+						context.Background(), bson.M{"clusterid": clusterM.ClusterID}).Decode(&existCluster)
+					if errFind != nil {
+						return errFind
+					}
+					if existCluster.ClusterName == clusterM.ClusterName && existCluster.BusinessID == clusterM.BusinessID {
+						blog.Infof("cluster %s[%s] exists, skipping...")
+						continue
+					}
+					dupClusters = append(dupClusters, clusterM)
+					continue
+				}
+				return err
+			}
+		}
+
+		err := deployKubeAgent(app.op, clusterM, clusterM.ProjectID, clusterM.ClusterID)
 		if err != nil {
-			blog.Errorf("insert clusters to mongoDB failed, %v", err)
+			blog.Errorf("deployKubeAgent for cluster %s failed, %v", clusterM.ClusterID, err)
+		}
+	}
+
+	clusterIDMap := make(map[string]string, 0)
+	for _, c := range dupClusters {
+		clusterNum, err := app.generateClusterID()
+		if err != nil {
 			return err
 		}
+		newClusterID := fmt.Sprintf("BCS-K8S-%d", clusterNum)
+		if app.op.MigrateClusterData {
+			clusterIDMap[newClusterID] = c.ClusterID
+			c.ClusterID = newClusterID
+			_, err = clusterCol.InsertOne(context.Background(), c)
+			if err != nil {
+				return err
+			}
+		}
 
-		blog.Infof("migrated %d clusters", len(documents))
-	}
-
-	for _, v := range clusterMs {
-		err := deployKubeAgent(app.op, v, v.ProjectID, clusterIDMap[v.ClusterID])
+		err = deployKubeAgent(app.op, c, c.ProjectID, clusterIDMap[newClusterID])
 		if err != nil {
-			blog.Errorf("deployKubeAgent for cluster %s failed, %v", clusterIDMap[v.ClusterID], err)
+			blog.Errorf("deployKubeAgent for cluster %s[%]s failed, %v",
+				c.ClusterName, clusterIDMap[newClusterID], err)
 		}
 	}
 
 	return nil
 }
 
+func (app *App) generateClusterID() (int, error) {
+	clusterCol := app.mongoClient.Database(mongoDBNameCluster).Collection(mongoDBCollectionNameCluster)
+	cursor, err := clusterCol.Find(context.Background(), bson.M{})
+	if err != nil {
+		return 0, err
+	}
+	defer cursor.Close(context.Background())
+
+	var clusters []types.ClusterM
+	if err = cursor.All(context.Background(), &clusters); err != nil {
+		return 0, err
+	}
+
+	clusterNumIDs := make([]int, 0)
+	for i := range clusters {
+		clusterStrs := strings.Split(clusters[i].ClusterID, "-")
+		if len(clusterStrs) != 3 {
+			continue
+		}
+
+		id, _ := strconv.Atoi(clusterStrs[2])
+		clusterNumIDs = append(clusterNumIDs, id)
+	}
+	sort.Ints(clusterNumIDs)
+
+	if len(clusterNumIDs) == 0 {
+		return 1, nil
+	}
+
+	return clusterNumIDs[len(clusterNumIDs)-1] + 1, nil
+}
+
 func deployKubeAgent(op *options.UpgradeOption, cluster types.ClusterM, projectID, clusterID string) error {
+	blog.Infof("deploying new kube agent for %s[%s]", cluster.ClusterName, cluster.ClusterID)
+
 	host := op.BCSApi.Addr
 	token := op.BCSApi.Token
 
@@ -271,6 +317,8 @@ func deployKubeAgent(op *options.UpgradeOption, cluster types.ClusterM, projectI
 	if err != nil {
 		return err
 	}
+
+	blog.Infof("deploy new kube agent for %s[%s] success", cluster.ClusterName, cluster.ClusterID)
 
 	return nil
 }
