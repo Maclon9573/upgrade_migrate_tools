@@ -379,6 +379,14 @@ func createKubeAgent(op *options.UpgradeOption, clientset *kubernetes.Clientset,
 	if len(gAddr) != 2 {
 		return fmt.Errorf("invalid bcs api gateway address")
 	}
+	hostAliaas := []corev1.HostAlias{}
+	if op.BCSApiGateway.IP != "" {
+		hostAliaas = append(hostAliaas, corev1.HostAlias{
+			IP:        op.BCSApiGateway.IP,
+			Hostnames: []string{gAddr[1]},
+		})
+	}
+
 	deployment := &v1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -437,6 +445,7 @@ func createKubeAgent(op *options.UpgradeOption, clientset *kubernetes.Clientset,
 					},
 					DeprecatedServiceAccount: "bcs-kube-agent",
 					ServiceAccountName:       "bcs-kube-agent",
+					HostAliases:              hostAliaas,
 					Volumes: []corev1.Volume{
 						{
 							Name: "bcs-certs",

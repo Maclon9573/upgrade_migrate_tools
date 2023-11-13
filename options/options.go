@@ -34,6 +34,7 @@ type UpgradeOption struct {
 
 type BCSConf struct {
 	Addr  string `json:"addr"`
+	IP    string `json:"ip"`
 	Token string `json:"token"`
 }
 
