@@ -211,9 +211,11 @@ func (app *App) migrateClusters() error {
 			}
 		}
 
-		err := deployKubeAgent(app.op, clusterM, clusterM.ProjectID, clusterM.ClusterID)
-		if err != nil {
-			blog.Errorf("deployKubeAgent for cluster %s failed, %v", clusterM.ClusterID, err)
+		if app.op.KubeAgent.Enable {
+			err := deployKubeAgent(app.op, clusterM, clusterM.ProjectID, clusterM.ClusterID)
+			if err != nil {
+				blog.Errorf("deploy kube agent for cluster %s failed, %v", clusterM.ClusterID, err)
+			}
 		}
 	}
 
@@ -233,10 +235,12 @@ func (app *App) migrateClusters() error {
 			}
 		}
 
-		err = deployKubeAgent(app.op, c, c.ProjectID, clusterIDMap[newClusterID])
-		if err != nil {
-			blog.Errorf("deployKubeAgent for cluster %s[%]s failed, %v",
-				c.ClusterName, clusterIDMap[newClusterID], err)
+		if app.op.KubeAgent.Enable {
+			err = deployKubeAgent(app.op, c, c.ProjectID, clusterIDMap[newClusterID])
+			if err != nil {
+				blog.Errorf("deploy kube agent for cluster %s[%s] failed, %v",
+					c.ClusterName, clusterIDMap[newClusterID], err)
+			}
 		}
 	}
 

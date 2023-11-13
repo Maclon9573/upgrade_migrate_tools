@@ -45,6 +45,7 @@ type MongoDBConf struct {
 }
 
 type KubeAgent struct {
+	Enable          bool   `bson:"enable"`
 	HelmPackagePath string `json:"helm_package_path"`
 	Namespace       string `json:"namespace"`
 	//Version         string `json:"version"`
