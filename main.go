@@ -29,6 +29,7 @@ func main() {
 
 	op := &options.UpgradeOption{}
 	conf.Parse(op)
+	blog.Infof("conf %#v", op)
 
 	blog.InitLogs(op.LogConfig)
 	defer blog.CloseLogs()

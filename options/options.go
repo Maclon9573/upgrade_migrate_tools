@@ -52,7 +52,7 @@ type MongoDBConf struct {
 
 // KubeAgent bcs kube agent configuration
 type KubeAgent struct {
-	Enable          bool   `bson:"enable"`
+	Enable          bool   `json:"enable"`
 	HelmPackagePath string `json:"helm_package_path"`
 	Namespace       string `json:"namespace"`
 	Image           string `json:"image"`
