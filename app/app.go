@@ -101,6 +101,8 @@ func (app *App) DoMigrate() error {
 
 	// deploy bcs kube agent
 	if app.op.KubeAgent.Enable {
+		blog.Infof("deploy new bcs kube agent enabled")
+
 		existClustersMongo := make([]types.ClusterM, 0)
 		cursor, err := app.mongoClient.Database(mongoDBNameCluster).Collection(mongoDBCollectionNameCluster).
 			Find(context.Background(), bson.M{})
@@ -113,6 +115,7 @@ func (app *App) DoMigrate() error {
 		}
 		cursor.Close(context.Background())
 
+		blog.Infof("will deploy new bcs kube agent on %d clusters")
 		for _, c := range existClustersMongo {
 			err := deployKubeAgent(app.op, c, changedCluster)
 			if err != nil {
