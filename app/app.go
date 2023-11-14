@@ -232,10 +232,12 @@ func (app *App) migrateClusters() (map[string]string, error) {
 			_, err := clusterCol.InsertOne(context.Background(), clusterM)
 			if err != nil {
 				if strings.Contains(err.Error(), "duplicate key") {
+					blog.Errorf(err.Error())
 					existCluster := types.ClusterM{}
 					for _, v := range existClustersMongo {
 						if v.ClusterID == clusterM.ClusterID {
 							existCluster = v
+							blog.Infof("got existed cluster %s[%s]", v.ClusterName, v.ClusterID)
 							break
 						}
 					}
