@@ -220,8 +220,8 @@ func (app *App) migrateClusters() ([]types.ClusterM, map[string]string, error) {
 		for _, cm := range existClustersMongo {
 			if cm.ProjectID == clusterM.ProjectID && cm.ClusterName == clusterM.ClusterName &&
 				cm.Description == clusterM.Description && clusterM.ClusterID != cm.ClusterID {
-				clusterM.ClusterID = cm.ClusterID
 				changedClusters[cm.ClusterID] = clusterM.ClusterID
+				clusterM.ClusterID = cm.ClusterID
 				break
 			}
 		}
