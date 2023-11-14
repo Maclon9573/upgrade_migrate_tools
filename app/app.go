@@ -256,37 +256,39 @@ func (app *App) migrateClusters() ([]types.ClusterM, map[string]string, error) {
 		}
 	}
 
-	app.processDupClusters(dupClusters, successClusters, failedClusters)
+	successClusters, failedClusters = app.processDupClusters(dupClusters, successClusters, failedClusters, changedClusters)
 	blog.Infof("migrated %d clusters", len(successClusters))
 	blog.Infof("%d clusters failed: %v", len(failedClusters), failedClusters)
 
 	return successClusters, changedClusters, nil
 }
 
-func (app *App) processDupClusters(dupClusters, success, failed []types.ClusterM) {
+func (app *App) processDupClusters(dupClusters, success, failed []types.ClusterM, changedClusters map[string]string) (
+	[]types.ClusterM, []types.ClusterM) {
 	clusterCol := app.mongoClient.Database(mongoDBNameCluster).Collection(mongoDBCollectionNameCluster)
-	clusterIDMap := make(map[string]string, 0)
 	for _, c := range dupClusters {
 		clusterNum, err := app.generateClusterID()
 		if err != nil {
 			blog.Errorf("processDupClusters generateClusterID failed, %v", err)
 			failed = append(failed, c)
+			continue
 		}
 		newClusterID := fmt.Sprintf("BCS-K8S-%d", clusterNum)
 		blog.Infof("clusterID of cluster[%s] changed from %s to %s", c.ClusterName, c.ClusterID, newClusterID)
 
 		if app.op.MigrateClusterData {
-			clusterIDMap[newClusterID] = c.ClusterID
+			changedClusters[newClusterID] = c.ClusterID
 			c.ClusterID = newClusterID
 			_, err = clusterCol.InsertOne(context.Background(), c)
 			if err != nil {
 				blog.Errorf("processDupClusters %s[%s] failed, %v", c.ClusterName, c.ClusterID, err)
 				failed = append(failed, c)
-
+				continue
 			}
 			success = append(success, c)
 		}
 	}
+	return success, failed
 }
 
 func (app *App) generateClusterID() (int, error) {
