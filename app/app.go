@@ -92,32 +92,20 @@ func (app *App) DoMigrate() error {
 	}
 
 	// migrate clusters in normal status
-	changedCluster, err := app.migrateClusters()
+	successClusters, changedClusters, err := app.migrateClusters()
 	if err != nil {
 		return err
 	}
 
-	blog.Infof("got %d changed clusters", len(changedCluster))
+	blog.Infof("got %d changed clusters", len(changedClusters))
 
 	// deploy bcs kube agent
 	if app.op.KubeAgent.Enable {
 		blog.Infof("deploy new bcs kube agent enabled")
 
-		existClustersMongo := make([]types.ClusterM, 0)
-		cursor, err := app.mongoClient.Database(mongoDBNameCluster).Collection(mongoDBCollectionNameCluster).
-			Find(context.Background(), bson.M{})
-		if err != nil {
-			return err
-		}
-
-		if err = cursor.All(context.Background(), &existClustersMongo); err != nil {
-			return err
-		}
-		cursor.Close(context.Background())
-
-		blog.Infof("will deploy new bcs kube agent on %d clusters")
-		for _, c := range existClustersMongo {
-			err := deployKubeAgent(app.op, c, changedCluster)
+		blog.Infof("will deploy new bcs kube agent on %d clusters", len(successClusters))
+		for _, c := range successClusters {
+			err := deployKubeAgent(app.op, c, changedClusters)
 			if err != nil {
 				blog.Errorf("deploy kube agent for cluster %s failed, %v", c.ClusterID, err)
 			}
@@ -181,11 +169,11 @@ func (app *App) migrateProjects() error {
 	return nil
 }
 
-func (app *App) migrateClusters() (map[string]string, error) {
+func (app *App) migrateClusters() ([]types.ClusterM, map[string]string, error) {
 	clusterCol := app.mongoClient.Database(mongoDBNameCluster).Collection(mongoDBCollectionNameCluster)
 	clusters := make([]types.Cluster, 0)
-	successClusters := make(map[string]string, 0)
-	failedClusters := make(map[string]string, 0)
+	successClusters := make([]types.ClusterM, 0)
+	failedClusters := make([]types.ClusterM, 0)
 	changedClusters := make(map[string]string, 0)
 
 	if len(app.op.ProjectIDs) != 0 {
@@ -220,11 +208,11 @@ func (app *App) migrateClusters() (map[string]string, error) {
 		existClustersMongo := make([]types.ClusterM, 0)
 		cursor, err := clusterCol.Find(context.Background(), bson.M{})
 		if err != nil {
-			return nil, err
+			return successClusters, nil, err
 		}
 
 		if err = cursor.All(context.Background(), &existClustersMongo); err != nil {
-			return nil, err
+			return successClusters, nil, err
 		}
 		cursor.Close(context.Background())
 
@@ -254,7 +242,7 @@ func (app *App) migrateClusters() (map[string]string, error) {
 						existCluster.ProjectID == clusterM.ProjectID {
 						blog.Infof("cluster %s[%s] imported already, skipping...",
 							existCluster.ClusterName, existCluster.ClusterID)
-						successClusters[existCluster.ClusterID] = existCluster.ClusterName
+						successClusters = append(successClusters, existCluster)
 						continue
 					}
 					dupClusters = append(dupClusters, clusterM)
@@ -262,9 +250,9 @@ func (app *App) migrateClusters() (map[string]string, error) {
 				}
 
 				blog.Errorf("migrate cluster %s[%s] failed, %v", clusterM.ClusterID, clusterM.ClusterName, err)
-				failedClusters[clusterM.ClusterID] = clusterM.ClusterName
+				failedClusters = append(failedClusters, clusterM)
 			}
-			successClusters[clusterM.ClusterID] = clusterM.ClusterName
+			successClusters = append(successClusters, clusterM)
 		}
 	}
 
@@ -272,17 +260,17 @@ func (app *App) migrateClusters() (map[string]string, error) {
 	blog.Infof("migrated %d clusters", len(successClusters))
 	blog.Infof("%d clusters failed: %v", len(failedClusters), failedClusters)
 
-	return changedClusters, nil
+	return successClusters, changedClusters, nil
 }
 
-func (app *App) processDupClusters(dupClusters []types.ClusterM, success, failed map[string]string) {
+func (app *App) processDupClusters(dupClusters, success, failed []types.ClusterM) {
 	clusterCol := app.mongoClient.Database(mongoDBNameCluster).Collection(mongoDBCollectionNameCluster)
 	clusterIDMap := make(map[string]string, 0)
 	for _, c := range dupClusters {
 		clusterNum, err := app.generateClusterID()
 		if err != nil {
 			blog.Errorf("processDupClusters generateClusterID failed, %v", err)
-			failed[c.ClusterID] = c.ClusterName
+			failed = append(failed, c)
 		}
 		newClusterID := fmt.Sprintf("BCS-K8S-%d", clusterNum)
 		blog.Infof("clusterID of cluster[%s] changed from %s to %s", c.ClusterName, c.ClusterID, newClusterID)
@@ -293,9 +281,10 @@ func (app *App) processDupClusters(dupClusters []types.ClusterM, success, failed
 			_, err = clusterCol.InsertOne(context.Background(), c)
 			if err != nil {
 				blog.Errorf("processDupClusters %s[%s] failed, %v", c.ClusterName, c.ClusterID, err)
-				failed[c.ClusterID] = c.ClusterName
+				failed = append(failed, c)
+
 			}
-			success[c.ClusterID] = c.ClusterName
+			success = append(success, c)
 		}
 	}
 }
