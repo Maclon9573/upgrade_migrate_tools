@@ -109,5 +109,9 @@ func CreateProject(host, token string, debug bool, req *CreateProjectRequest) (*
 		return nil, errMsg
 	}
 
+	if resp.Code != 0 {
+		return nil, fmt.Errorf(resp.Message)
+	}
+
 	return resp, nil
 }

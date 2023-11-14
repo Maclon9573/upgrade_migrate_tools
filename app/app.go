@@ -97,6 +97,8 @@ func (app *App) DoMigrate() error {
 		return err
 	}
 
+	blog.Infof("got %d changed clusters", len(changedCluster))
+
 	// deploy bcs kube agent
 	if app.op.KubeAgent.Enable {
 		existClustersMongo := make([]types.ClusterM, 0)
@@ -157,6 +159,11 @@ func (app *App) migrateProjects() error {
 				CenterName:  p.CenterName,
 			})
 		if err != nil {
+			if strings.Contains(err.Error(), "already exists") {
+				blog.Infof(err.Error())
+				successProjects[p.ProjectID] = p.Name
+				continue
+			}
 			blog.Errorf("create project %s[%s] failed, %v", p.Name, p.ProjectID, err)
 			failedProjects[p.ProjectID] = p.Name
 			continue
@@ -243,7 +250,8 @@ func (app *App) migrateClusters() (map[string]string, error) {
 					}
 					if existCluster.ClusterName == clusterM.ClusterName &&
 						existCluster.ProjectID == clusterM.ProjectID {
-						blog.Infof("cluster %s[%s] imported already, skipping...")
+						blog.Infof("cluster %s[%s] imported already, skipping...",
+							existCluster.ClusterName, existCluster.ClusterID)
 						successClusters[existCluster.ClusterID] = existCluster.ClusterName
 						continue
 					}

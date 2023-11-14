@@ -14,7 +14,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"runtime"
 
@@ -37,7 +36,7 @@ func main() {
 	app := application.NewApp(op)
 
 	if err := app.DoMigrate(); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
+		blog.Errorf("DoMigrate failed, %v", err)
 		blog.CloseLogs()
 		// nolint
 		os.Exit(1)
