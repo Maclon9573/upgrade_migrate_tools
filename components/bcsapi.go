@@ -24,6 +24,7 @@ import (
 
 const defaultTimeOut = time.Second * 60
 
+// IdentifierResp for identifier response
 type IdentifierResp struct {
 	ID         string `json:"id"`
 	Provider   uint32 `json:"provider"`
@@ -32,6 +33,7 @@ type IdentifierResp struct {
 	CreatedAt  string `json:"created_at"`
 }
 
+// ClusterCredentialResp for cluster credential response
 type ClusterCredentialResp struct {
 	ClusterID  string `json:"cluster_id"`
 	ServerPath string `json:"server_address_path"`
@@ -39,7 +41,8 @@ type ClusterCredentialResp struct {
 	CaCert     string `json:"cacert_data"`
 }
 
-func GetClusterIdentifier(host, token, projectID, clusterID string) (*IdentifierResp, error) {
+// GetClusterIdentifier cluster identifier
+func GetClusterIdentifier(host, token, projectID, clusterID string, debug bool) (*IdentifierResp, error) {
 	resp := &IdentifierResp{}
 	result, body, errs := gorequest.New().
 		Timeout(defaultTimeOut).
@@ -63,7 +66,8 @@ func GetClusterIdentifier(host, token, projectID, clusterID string) (*Identifier
 	return resp, nil
 }
 
-func GetClusterCredential(host, token, id string) (*ClusterCredentialResp, error) {
+// GetClusterCredential get cluster credential
+func GetClusterCredential(host, token, id string, debug bool) (*ClusterCredentialResp, error) {
 	resp := &ClusterCredentialResp{}
 	result, body, errs := gorequest.New().
 		Timeout(defaultTimeOut).

@@ -1,24 +1,29 @@
 {
   "alsologtostderr": true,
+  "debug": true,
   "project_ids": [],
+  "migrate_project_data": true,
   "migrate_cluster_data": true,
+  "bcs_api": {
+    "addr": "https://192.168.xxx.xxx:8443",
+    "token": ""
+  },
   "mysql_dsn": "",
+  "bcs_api_gateway": {
+    "addr": "http://bcs-api.bkce7.xxx.com",
+    "ip": "",
+    "token": ""
+  },
   "mongoDB": {
-    "host": "",
-    "port": "",
+    "host": "127.0.0.1",
+    "port": "27017",
     "username": "",
     "password": ""
   },
-  "bcs_api": {
-    "addr": "",
-    "token": ""
-  },
-  "bcs_api_gateway": {
-    "addr": "",
-    "token": ""
-  },
+  "bk_cluster_id": "",
+  "bcs_cert_name": "",
   "kube_agent": {
-    "helm_package_path": "",
+    "enable": true,
     "namespace": "",
     "image": ""
   }

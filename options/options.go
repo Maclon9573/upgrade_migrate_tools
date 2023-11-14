@@ -15,11 +15,14 @@ package options
 
 import "github.com/Tencent/bk-bcs/bcs-common/common/conf"
 
+// UpgradeOption upgrade option
 type UpgradeOption struct {
 	conf.FileConfig
 	conf.LogConfig
 
+	Debug              bool        `json:"debug"`
 	ProjectIDs         []string    `json:"project_ids"`
+	MigrateProjectData bool        `json:"migrate_project_data"`
 	MigrateClusterData bool        `json:"migrate_cluster_data"`
 	DSN                string      `json:"mysql_dsn"`
 	MongoDB            MongoDBConf `json:"mongoDB"`
@@ -32,12 +35,14 @@ type UpgradeOption struct {
 	K8SWatch      K8SWatch  `json:"k8s_watch"`
 }
 
+// BCSConf bcs configuration
 type BCSConf struct {
 	Addr  string `json:"addr"`
 	IP    string `json:"ip"`
 	Token string `json:"token"`
 }
 
+// MongoDBConf MongoDB configuration
 type MongoDBConf struct {
 	Host     string `json:"host"`
 	Port     uint32 `json:"port"`
@@ -45,13 +50,14 @@ type MongoDBConf struct {
 	Password string `json:"password"`
 }
 
+// KubeAgent bcs kube agent configuration
 type KubeAgent struct {
 	Enable          bool   `bson:"enable"`
 	HelmPackagePath string `json:"helm_package_path"`
 	Namespace       string `json:"namespace"`
-	//Version         string `json:"version"`
-	Image string `json:"image"`
+	Image           string `json:"image"`
 }
 
+// K8SWatch bcs k8s watch configuration
 type K8SWatch struct {
 }

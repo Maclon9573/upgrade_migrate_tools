@@ -22,6 +22,7 @@ import (
 	"github.com/parnurzeal/gorequest"
 )
 
+// CreateProjectRequest create project request
 type CreateProjectRequest struct {
 	CreateTime  string `json:"createTime,omitempty"`
 	Creator     string `json:"creator,omitempty"`
@@ -44,6 +45,7 @@ type CreateProjectRequest struct {
 	CenterName  string `json:"centerName,omitempty"`
 }
 
+// ProjectResponse create project response
 type ProjectResponse struct {
 	Code           uint32   `json:"code,omitempty"`
 	Message        string   `json:"message,omitempty"`
@@ -52,6 +54,7 @@ type ProjectResponse struct {
 	WebAnnotations *Perms   `json:"web_annotations,omitempty"`
 }
 
+// Project for project info
 type Project struct {
 	CreateTime   string `json:"createTime,omitempty"`
 	UpdateTime   string `json:"updateTime,omitempty"`
@@ -78,15 +81,17 @@ type Project struct {
 	BusinessName string `json:"businessName,omitempty"`
 }
 
+// Perms xxx
 type Perms struct {
 	Perms *_struct.Struct `json:"perms,omitempty"`
 }
 
-func CreateProject(host, token string, req *CreateProjectRequest) (*ProjectResponse, error) {
+// CreateProject create project
+func CreateProject(host, token string, debug bool, req *CreateProjectRequest) (*ProjectResponse, error) {
 	resp := &ProjectResponse{}
 	result, body, errs := gorequest.New().
 		Timeout(defaultTimeOut).
-		SetDebug(false).
+		SetDebug(debug).
 		TLSClientConfig(&tls.Config{InsecureSkipVerify: true}).
 		Post(fmt.Sprintf("%s/bcsapi/v4/bcsproject/v1/projects", host)).
 		Set("Authorization", fmt.Sprintf("Bearer %s", token)).

@@ -242,6 +242,7 @@ type CloudDataDisk struct {
 	DiskPartition      string `json:"diskPartition,omitempty"`
 }
 
+// BKOpsPlugin xxx
 type BKOpsPlugin struct {
 	System              string            `json:"system,omitempty"`
 	Link                string            `json:"link,omitempty"`
@@ -249,6 +250,7 @@ type BKOpsPlugin struct {
 	AllowSkipWhenFailed bool              `json:"allowSkipWhenFailed,omitempty"`
 }
 
+// Node xxx
 type Node struct {
 	NodeID         string `json:"nodeID,omitempty"`
 	InnerIP        string `json:"innerIP,omitempty"`
@@ -273,6 +275,7 @@ type Node struct {
 	TaskID         string `json:"taskID,omitempty"`
 }
 
+// NetworkSetting xxx
 type NetworkSetting struct {
 	ClusterIPv4CIDR     string   `json:"clusterIPv4CIDR,omitempty"`
 	ServiceIPv4CIDR     string   `json:"serviceIPv4CIDR,omitempty"`
@@ -289,6 +292,7 @@ type NetworkSetting struct {
 	ServiceIPv6CIDR     string   `json:"serviceIPv6CIDR,omitempty"`
 }
 
+// ClusterBasicSetting xxx
 type ClusterBasicSetting struct {
 	OS                        string            `json:"OS,omitempty"`
 	Version                   string            `json:"version,omitempty"`
@@ -299,6 +303,7 @@ type ClusterBasicSetting struct {
 	IsAutoUpgradeClusterLevel bool              `json:"isAutoUpgradeClusterLevel,omitempty"`
 }
 
+// ClusterAdvanceSetting xxx
 type ClusterAdvanceSetting struct {
 	IPVS               bool              `json:"IPVS,omitempty"`
 	ContainerRuntime   string            `json:"containerRuntime,omitempty"`
@@ -310,6 +315,7 @@ type ClusterAdvanceSetting struct {
 	EnableHa           bool              `json:"enableHa,omitempty"`
 }
 
+// NodeSetting xxx
 type NodeSetting struct {
 	DockerGraphPath   string            `json:"dockerGraphPath,omitempty"`
 	MountTarget       string            `json:"mountTarget,omitempty"`
@@ -322,6 +328,7 @@ type NodeSetting struct {
 	Taints            []*Taint          `json:"taints,omitempty"`
 }
 
+// KeyInfo xxx
 type KeyInfo struct {
 	KeyID     string `json:"keyID,omitempty"`
 	KeySecret string `json:"keySecret,omitempty"`
