@@ -97,7 +97,7 @@ func (app *App) DoMigrate() error {
 		return err
 	}
 
-	blog.Infof("got %d changed clusters", len(changedClusters))
+	blog.Infof("got %d changed clusters: %v", len(changedClusters), changedClusters)
 
 	// deploy bcs kube agent
 	if app.op.KubeAgent.Enable {
