@@ -46,7 +46,7 @@ func GetClusterIdentifier(host, token, projectID, clusterID string, debug bool) 
 	resp := &IdentifierResp{}
 	result, body, errs := gorequest.New().
 		Timeout(defaultTimeOut).
-		SetDebug(false).
+		SetDebug(debug).
 		TLSClientConfig(&tls.Config{InsecureSkipVerify: true}).
 		Get(fmt.Sprintf("%s/rest/clusters/bcs/query_by_id?project_id=%s&cluster_id=%s", host, projectID, clusterID)).
 		Set("Authorization", fmt.Sprintf("Bearer %s", token)).
@@ -71,7 +71,7 @@ func GetClusterCredential(host, token, id string, debug bool) (*ClusterCredentia
 	resp := &ClusterCredentialResp{}
 	result, body, errs := gorequest.New().
 		Timeout(defaultTimeOut).
-		SetDebug(false).
+		SetDebug(debug).
 		TLSClientConfig(&tls.Config{InsecureSkipVerify: true}).
 		Get(fmt.Sprintf("%s/rest/clusters/%s/client_credentials", host, id)).
 		Set("Authorization", fmt.Sprintf("Bearer %s", token)).
