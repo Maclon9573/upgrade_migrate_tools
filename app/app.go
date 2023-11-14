@@ -144,7 +144,7 @@ func (app *App) migrateProjects() error {
 				UseBKRes:    p.UseBK,
 				Description: p.Description,
 				IsOffline:   p.IsOfflined,
-				Kind:        strconv.Itoa(int(p.Kind)),
+				Kind:        "k8s",
 				BusinessID:  strconv.Itoa(int(p.CCAppID)),
 				IsSecret:    p.IsSecrecy,
 				ProjectType: uint32(p.ProjectType),
