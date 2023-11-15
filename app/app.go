@@ -251,7 +251,7 @@ func (app *App) migrateClusters() ([]types.ClusterM, map[string]string, error) {
 				continue
 			}
 
-			err = createClusterInCc(app.op, clusterM)
+			err = createClusterInCc(app.op, clusterM, changedClusters)
 			if err != nil {
 				failedClusters = append(failedClusters, clusterM)
 				continue
@@ -267,8 +267,9 @@ func (app *App) migrateClusters() ([]types.ClusterM, map[string]string, error) {
 	return successClusters, changedClusters, nil
 }
 
-func createClusterInCc(op *options.UpgradeOption, cluster types.ClusterM) error {
-	masters, err := getMasterNodes(op, cluster)
+func createClusterInCc(op *options.UpgradeOption, cluster types.ClusterM, changedClusters map[string]string) error {
+	blog.Infof("sync cluster %s[%s] to bcs cc", cluster.ClusterName, cluster.ClusterID)
+	masters, err := getMasterNodes(op, cluster, changedClusters)
 	if err != nil {
 		blog.Errorf("get master nodes for cluster %s[%s] failed, %v", cluster.ClusterName, cluster.ClusterID, err)
 		return err
@@ -335,7 +336,7 @@ func (app *App) processDupClusters(dupClusters, success, failed []types.ClusterM
 				failed = append(failed, c)
 				continue
 			}
-			err = createClusterInCc(app.op, c)
+			err = createClusterInCc(app.op, c, changedClusters)
 			if err != nil {
 				failed = append(failed, c)
 				continue
@@ -378,34 +379,9 @@ func (app *App) generateClusterID() (int, error) {
 	return clusterNumIDs[len(clusterNumIDs)-1] + 1, nil
 }
 
-func getMasterNodes(op *options.UpgradeOption, cluster types.ClusterM) ([]*corev1.Node, error) {
-	blog.Infof("deploying new kube agent for %s[%s]", cluster.ClusterName, cluster.ClusterID)
-
-	host := op.BCSApi.Addr
-	token := op.BCSApi.Token
-	id, err := components.GetClusterIdentifier(host, token, cluster.ProjectID, cluster.ClusterID, op.Debug)
-	if err != nil {
-		blog.Errorf("get cluster %s identifier failed, %v", cluster.ClusterID, err)
-		return nil, err
-	}
-
-	resp, err := components.GetClusterCredential(host, token, id.ID, op.Debug)
-	if err != nil {
-		blog.Errorf("get cluster %s credential failed, %v", cluster.ClusterID, err)
-		return nil, err
-	}
-
-	config := &rest.Config{
-		Host: fmt.Sprintf("%s/tunnels/clusters/%s", host, id.Identifier),
-		TLSClientConfig: rest.TLSClientConfig{
-			CertData: []byte(base64.StdEncoding.EncodeToString([]byte(resp.CaCert))),
-			Insecure: true,
-		},
-		BearerToken: resp.UserToken,
-	}
-
+func getMasterNodes(op *options.UpgradeOption, cluster types.ClusterM, changeClusters map[string]string) ([]*corev1.Node, error) {
 	// create clientset from bcs-api
-	clientset, err := kubernetes.NewForConfig(config)
+	clientset, err := generateClientset(op, cluster, changeClusters)
 	if err != nil {
 		return nil, err
 	}
@@ -428,37 +404,8 @@ func getMasterNodes(op *options.UpgradeOption, cluster types.ClusterM) ([]*corev
 
 func deployKubeAgent(op *options.UpgradeOption, cluster types.ClusterM, changeClusters map[string]string) error {
 	blog.Infof("deploying new kube agent for %s[%s]", cluster.ClusterName, cluster.ClusterID)
-
-	host := op.BCSApi.Addr
-	token := op.BCSApi.Token
-	orgClusterID := cluster.ClusterID
-	if value, ok := changeClusters[cluster.ClusterID]; ok {
-		orgClusterID = value
-	}
-
-	id, err := components.GetClusterIdentifier(host, token, cluster.ProjectID, orgClusterID, op.Debug)
-	if err != nil {
-		blog.Errorf("get cluster %s identifier failed, %v", orgClusterID, err)
-		return err
-	}
-
-	resp, err := components.GetClusterCredential(host, token, id.ID, op.Debug)
-	if err != nil {
-		blog.Errorf("get cluster %s credential failed, %v", orgClusterID, err)
-		return err
-	}
-
-	config := &rest.Config{
-		Host: fmt.Sprintf("%s/tunnels/clusters/%s", host, id.Identifier),
-		TLSClientConfig: rest.TLSClientConfig{
-			CertData: []byte(base64.StdEncoding.EncodeToString([]byte(resp.CaCert))),
-			Insecure: true,
-		},
-		BearerToken: resp.UserToken,
-	}
-
 	// create clientset from bcs-api
-	clientset, err := kubernetes.NewForConfig(config)
+	clientset, err := generateClientset(op, cluster, changeClusters)
 	if err != nil {
 		return err
 	}
@@ -476,6 +423,45 @@ func deployKubeAgent(op *options.UpgradeOption, cluster types.ClusterM, changeCl
 	blog.Infof("deploy new kube agent for %s[%s] success", cluster.ClusterName, cluster.ClusterID)
 
 	return nil
+}
+
+func generateClientset(op *options.UpgradeOption, cluster types.ClusterM, changeClusters map[string]string) (
+	*kubernetes.Clientset, error) {
+	host := op.BCSApi.Addr
+	token := op.BCSApi.Token
+	orgClusterID := cluster.ClusterID
+	if value, ok := changeClusters[cluster.ClusterID]; ok {
+		orgClusterID = value
+	}
+
+	id, err := components.GetClusterIdentifier(host, token, cluster.ProjectID, orgClusterID, op.Debug)
+	if err != nil {
+		blog.Errorf("get cluster %s identifier failed, %v", orgClusterID, err)
+		return nil, err
+	}
+
+	resp, err := components.GetClusterCredential(host, token, id.ID, op.Debug)
+	if err != nil {
+		blog.Errorf("get cluster %s credential failed, %v", orgClusterID, err)
+		return nil, err
+	}
+
+	config := &rest.Config{
+		Host: fmt.Sprintf("%s/tunnels/clusters/%s", host, id.Identifier),
+		TLSClientConfig: rest.TLSClientConfig{
+			CertData: []byte(base64.StdEncoding.EncodeToString([]byte(resp.CaCert))),
+			Insecure: true,
+		},
+		BearerToken: resp.UserToken,
+	}
+
+	// create clientset from bcs-api
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return clientset, nil
 }
 
 func createKubeAgentSecret(op *options.UpgradeOption, clientset *kubernetes.Clientset) error {
