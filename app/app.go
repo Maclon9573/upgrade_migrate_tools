@@ -335,6 +335,11 @@ func (app *App) processDupClusters(dupClusters, success, failed []types.ClusterM
 				failed = append(failed, c)
 				continue
 			}
+			err = createClusterInCc(app.op, c)
+			if err != nil {
+				failed = append(failed, c)
+				continue
+			}
 			success = append(success, c)
 		}
 	}

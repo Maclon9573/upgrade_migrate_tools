@@ -20,6 +20,13 @@
     "username": "",
     "password": ""
   },
+  "bcs-cc": {
+    "addr": "http://bcs-cc.bkce7.xxx.com",
+    "ssm_host": "http://bkssm.bkce7.xxx.com",
+    "bk_token": "",
+    "app_code": "",
+    "app_secret": ""
+  },
   "bk_cluster_id": "",
   "bcs_cert_name": "",
   "kube_agent": {
