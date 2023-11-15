@@ -24,7 +24,9 @@
   "bcs_cert_name": "",
   "kube_agent": {
     "enable": true,
+    "yaml_path": "",
     "namespace": "",
-    "image": ""
+    "image": "",
+    "service_account": ""
   }
 }

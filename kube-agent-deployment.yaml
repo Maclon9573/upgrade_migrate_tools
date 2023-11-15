@@ -10,7 +10,6 @@ spec:
   selector:
     matchLabels:
       app: bcs-kube-agent-v2
-      platform: bk-bcs
   strategy:
     rollingUpdate:
       maxSurge: 25%
@@ -20,7 +19,6 @@ spec:
     metadata:
       labels:
         app: bcs-kube-agent-v2
-        platform: bk-bcs
     spec:
       affinity:
         nodeAffinity:
@@ -31,15 +29,11 @@ spec:
                     operator: Exists
       containers:
         - args:
-            - --bke-address=    # migrate tool会根据json配置文件中bcs_api_gateway.addr渲染
-            - --cluster-id=     # migrate tool会自动渲染
             - --insecureSkipVerify=true
             - --verbosity=3
             - --use-websocket=true
             - --websocket-path=/bcsapi/v4/clustermanager/v1/websocket/connect
           env:
-            - name: USER_TOKEN
-              value: bcsApiGatewayBearerToken # migrate tool会根据json配置文件中bcs_api_gateway.token渲染
             - name: CLIENT_CA
               value: /data/bcs/cert/bcs/bcs-ca.crt
             - name: CLIENT_CERT
@@ -65,8 +59,6 @@ spec:
       restartPolicy: Always
       schedulerName: default-scheduler
       securityContext: {}
-      serviceAccount: bcs-kube-watch  # migrate tool会根据json配置文件中kube_agent.service_account渲染
-      serviceAccountName: bcs-kube-watch  # migrate tool会根据json配置文件中kube_agent.service_account渲染
       terminationGracePeriodSeconds: 30
       tolerations:
         - effect: NoSchedule
@@ -76,7 +68,7 @@ spec:
       volumes:
         - name: bcs-certs
           secret:
-            secretName: bcs-client-bcs-services-stack
+            secretName: bcs-client-bcs-services-stack   # migrate tool会根据json配置文件中bcs_cert_name渲染
             items:
               - key: ca.crt
                 path: bcs-ca.crt

@@ -17,6 +17,8 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"io/ioutil"
+	"k8s.io/client-go/kubernetes/scheme"
 	"sort"
 	"strconv"
 	"strings"
@@ -418,8 +420,6 @@ func createKubeAgentSecret(op *options.UpgradeOption, clientset *kubernetes.Clie
 }
 
 func createKubeAgent(op *options.UpgradeOption, clientset *kubernetes.Clientset, clusterID string) error {
-	name := "bcs-kube-agent-v2"
-
 	gAddr := strings.Split(op.BCSApiGateway.Addr, "//")
 	if len(gAddr) != 2 {
 		return fmt.Errorf("invalid bcs api gateway address")
@@ -432,111 +432,37 @@ func createKubeAgent(op *options.UpgradeOption, clientset *kubernetes.Clientset,
 		})
 	}
 
-	deployment := &v1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-		Spec: v1.DeploymentSpec{
-			Replicas: func(a int32) *int32 { return &a }(1),
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app": name,
-				},
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"app": name,
-					},
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "bcs-kube-agent",
-							Image: op.KubeAgent.Image,
-							Args: []string{
-								fmt.Sprintf("--bke-address=wss://%s", gAddr[1]),
-								fmt.Sprintf("--cluster-id=%s", clusterID),
-								fmt.Sprintf("--insecureSkipVerify=%s", "true"),
-								fmt.Sprintf("--verbosity=%d", 3),
-								fmt.Sprintf("--use-websocket=%s", "true"),
-								fmt.Sprintf("--websocket-path=%s", "/bcsapi/v4/clustermanager/v1/websocket/connect"),
-							},
-							Env: []corev1.EnvVar{
-								{
-									Name:  "USER_TOKEN",
-									Value: op.BCSApiGateway.Token,
-								},
-								{
-									Name:  "CLIENT_CA",
-									Value: "/data/bcs/cert/bcs/bcs-ca.crt",
-								},
-								{
-									Name:  "CLIENT_CERT",
-									Value: "/data/bcs/cert/bcs/bcs-client.crt",
-								},
-								{
-									Name:  "CLIENT_KEY",
-									Value: "/data/bcs/cert/bcs/bcs-client.key",
-								},
-							},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "bcs-certs",
-									MountPath: "/data/bcs/cert/bcs",
-								},
-							},
-						},
-					},
-					DeprecatedServiceAccount: op.KubeAgent.ServiceAccount,
-					ServiceAccountName:       op.KubeAgent.ServiceAccount,
-					Affinity: &corev1.Affinity{
-						NodeAffinity: &corev1.NodeAffinity{
-							RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
-								NodeSelectorTerms: []corev1.NodeSelectorTerm{
-									{
-										MatchExpressions: []corev1.NodeSelectorRequirement{
-											{
-												Key:      "bcs-node",
-												Operator: corev1.NodeSelectorOpExists,
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-					HostAliases: hostAliaas,
-					Volumes: []corev1.Volume{
-						{
-							Name: "bcs-certs",
-							VolumeSource: corev1.VolumeSource{
-								Secret: &corev1.SecretVolumeSource{
-									SecretName: op.BCSCertName,
-									Items: []corev1.KeyToPath{
-										{
-											Key:  "ca.crt",
-											Path: "bcs-ca.crt",
-										},
-										{
-											Key:  "tls.crt",
-											Path: "bcs-client.crt",
-										},
-										{
-											Key:  "tls.key",
-											Path: "bcs-client.key",
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
+	// 从文件中读取 YAML 内容
+	yamlFile, err := ioutil.ReadFile(op.KubeAgent.YamlPath)
+	if err != nil {
+		return err
 	}
 
-	_, err := clientset.AppsV1().Deployments(op.KubeAgent.Namespace).
+	// 将 YAML 转换为 Deployment 对象
+	deployment := &v1.Deployment{}
+	_, _, err = scheme.Codecs.UniversalDeserializer().Decode(yamlFile, nil, deployment)
+	if err != nil {
+		return err
+	}
+	deployment.Spec.Template.Spec.Containers[0].Args = append(deployment.Spec.Template.Spec.Containers[0].Args,
+		fmt.Sprintf("--bke-address=wss://%s", gAddr[1]),
+		fmt.Sprintf("--cluster-id=%s", clusterID))
+	deployment.Spec.Template.Spec.Containers[0].Env = append(deployment.Spec.Template.Spec.Containers[0].Env,
+		corev1.EnvVar{
+			Name:  "USER_TOKEN",
+			Value: op.BCSApiGateway.Token,
+		})
+	deployment.Spec.Template.Spec.Containers[0].Image = op.KubeAgent.Image
+	deployment.Spec.Template.Spec.ServiceAccountName = op.KubeAgent.ServiceAccount
+	deployment.Spec.Template.Spec.DeprecatedServiceAccount = op.KubeAgent.ServiceAccount
+	deployment.Spec.Template.Spec.HostAliases = hostAliaas
+	for _, v := range deployment.Spec.Template.Spec.Volumes {
+		if v.Name == "bcs-certs" {
+			v.Secret.SecretName = op.BCSCertName
+		}
+	}
+
+	_, err = clientset.AppsV1().Deployments(op.KubeAgent.Namespace).
 		Create(context.Background(), deployment, metav1.CreateOptions{})
 	if err != nil {
 		return err
