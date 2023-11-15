@@ -99,7 +99,7 @@ func (app *App) DoMigrate() error {
 		return err
 	}
 
-	blog.Infof("got %d changed clusters: %v", len(changedClusters), changedClusters)
+	blog.Debug("got %d changed clusters: %v", len(changedClusters), changedClusters)
 
 	// deploy bcs kube agent
 	if app.op.KubeAgent.Enable {
@@ -218,35 +218,29 @@ func (app *App) migrateClusters() ([]types.ClusterM, map[string]string, error) {
 		}
 		cursor.Close(context.Background())
 
+		exist := false
 		// 重复执行可能存在clusterID变更而且已经迁移的情况
 		for _, cm := range existClustersMongo {
-			if cm.ProjectID == clusterM.ProjectID && cm.ClusterName == clusterM.ClusterName &&
-				cm.Description == clusterM.Description && clusterM.ClusterID != cm.ClusterID {
-				changedClusters[cm.ClusterID] = clusterM.ClusterID
+			if cm.ProjectID == c.ProjectID && cm.ClusterName == c.Name &&
+				cm.Description == c.Description && c.ClusterID != cm.ClusterID {
+				changedClusters[cm.ClusterID] = c.ClusterID
+				blog.Infof("clusterID of cluster[%s] changed from %s to %s", c.Name, c.ClusterID, cm.ClusterID)
 				clusterM.ClusterID = cm.ClusterID
+				successClusters = append(successClusters, clusterM)
+				exist = true
 				break
 			}
 		}
 
 		if app.op.MigrateClusterData {
-			_, err := clusterCol.InsertOne(context.Background(), clusterM)
+			if exist {
+				blog.Infof("cluster %s[%s] imported already, skipping...",
+					clusterM.ClusterName, clusterM.ClusterID)
+				continue
+			}
+			_, err = clusterCol.InsertOne(context.Background(), clusterM)
 			if err != nil {
 				if strings.Contains(err.Error(), "duplicate key") {
-					existCluster := types.ClusterM{}
-					for _, v := range existClustersMongo {
-						if v.ClusterID == clusterM.ClusterID {
-							existCluster = v
-							blog.Infof("got existed cluster %s[%s]", v.ClusterName, v.ClusterID)
-							break
-						}
-					}
-					if existCluster.ClusterName == clusterM.ClusterName &&
-						existCluster.ProjectID == clusterM.ProjectID {
-						blog.Infof("cluster %s[%s] imported already, skipping...",
-							existCluster.ClusterName, existCluster.ClusterID)
-						successClusters = append(successClusters, existCluster)
-						continue
-					}
 					dupClusters = append(dupClusters, clusterM)
 					continue
 				}
@@ -277,10 +271,10 @@ func (app *App) processDupClusters(dupClusters, success, failed []types.ClusterM
 		}
 		newClusterID := fmt.Sprintf("BCS-K8S-%d", clusterNum)
 		blog.Infof("clusterID of cluster[%s] changed from %s to %s", c.ClusterName, c.ClusterID, newClusterID)
+		changedClusters[newClusterID] = c.ClusterID
+		c.ClusterID = newClusterID
 
 		if app.op.MigrateClusterData {
-			changedClusters[newClusterID] = c.ClusterID
-			c.ClusterID = newClusterID
 			_, err = clusterCol.InsertOne(context.Background(), c)
 			if err != nil {
 				blog.Errorf("processDupClusters %s[%s] failed, %v", c.ClusterName, c.ClusterID, err)
