@@ -246,8 +246,15 @@ func (app *App) migrateClusters() ([]types.ClusterM, map[string]string, error) {
 					continue
 				}
 
-				blog.Errorf("migrate cluster %s[%s] failed, %v", clusterM.ClusterID, clusterM.ClusterName, err)
 				failedClusters = append(failedClusters, clusterM)
+				blog.Errorf("migrate cluster %s[%s] failed, %v", clusterM.ClusterID, clusterM.ClusterName, err)
+				continue
+			}
+
+			err = createClusterInCc(app.op, clusterM)
+			if err != nil {
+				failedClusters = append(failedClusters, clusterM)
+				continue
 			}
 			successClusters = append(successClusters, clusterM)
 		}
@@ -258,6 +265,52 @@ func (app *App) migrateClusters() ([]types.ClusterM, map[string]string, error) {
 	blog.Infof("%d clusters failed: %v", len(failedClusters), failedClusters)
 
 	return successClusters, changedClusters, nil
+}
+
+func createClusterInCc(op *options.UpgradeOption, cluster types.ClusterM) error {
+	masters, err := getMasterNodes(op, cluster)
+	if err != nil {
+		blog.Errorf("get master nodes for cluster %s[%s] failed, %v", cluster.ClusterName, cluster.ClusterID, err)
+		return err
+	}
+
+	resp, err := components.GetAccessToken(op.BCSCc, op.Debug)
+	if err != nil {
+		blog.Errorf("get access token failed")
+		return err
+	}
+
+	masterIPs := make([]components.CreateMasterData, 0)
+	for _, m := range masters {
+		for _, ip := range m.Status.Addresses {
+			if ip.Type == corev1.NodeInternalIP {
+				masterIPs = append(masterIPs, components.CreateMasterData{InnerIP: ip.Address})
+				break
+			}
+		}
+	}
+
+	clusterNum, _ := strconv.Atoi(strings.TrimPrefix(cluster.ClusterID, "BCS-K8S-"))
+	_, err = components.SyncClusterToCc(op.BCSCc.Addr, cluster.ProjectID, resp.Data.AccessToken, op.Debug,
+		&components.SyncClusterReq{
+			ProjectID:   cluster.ProjectID,
+			ClusterID:   cluster.ClusterID,
+			ClusterNum:  clusterNum,
+			Name:        cluster.ClusterName,
+			Creator:     cluster.Creator,
+			Description: cluster.Description,
+			Type:        "k8s",
+			Environment: "prod",
+			AreaID:      1,
+			Status:      cluster.Status,
+			MasterIPs:   masterIPs,
+		})
+	if err != nil {
+		blog.Errorf("sync cluster %s[%s] to bcs cc failed, %v", cluster.ClusterName, cluster.ClusterID, err)
+		return err
+	}
+
+	return nil
 }
 
 func (app *App) processDupClusters(dupClusters, success, failed []types.ClusterM, changedClusters map[string]string) (
@@ -318,6 +371,54 @@ func (app *App) generateClusterID() (int, error) {
 	}
 
 	return clusterNumIDs[len(clusterNumIDs)-1] + 1, nil
+}
+
+func getMasterNodes(op *options.UpgradeOption, cluster types.ClusterM) ([]*corev1.Node, error) {
+	blog.Infof("deploying new kube agent for %s[%s]", cluster.ClusterName, cluster.ClusterID)
+
+	host := op.BCSApi.Addr
+	token := op.BCSApi.Token
+	id, err := components.GetClusterIdentifier(host, token, cluster.ProjectID, cluster.ClusterID, op.Debug)
+	if err != nil {
+		blog.Errorf("get cluster %s identifier failed, %v", cluster.ClusterID, err)
+		return nil, err
+	}
+
+	resp, err := components.GetClusterCredential(host, token, id.ID, op.Debug)
+	if err != nil {
+		blog.Errorf("get cluster %s credential failed, %v", cluster.ClusterID, err)
+		return nil, err
+	}
+
+	config := &rest.Config{
+		Host: fmt.Sprintf("%s/tunnels/clusters/%s", host, id.Identifier),
+		TLSClientConfig: rest.TLSClientConfig{
+			CertData: []byte(base64.StdEncoding.EncodeToString([]byte(resp.CaCert))),
+			Insecure: true,
+		},
+		BearerToken: resp.UserToken,
+	}
+
+	// create clientset from bcs-api
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	masters := make([]*corev1.Node, 0)
+	nodeList, err := clientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	for _, n := range nodeList.Items {
+		if _, ok := n.Labels["node-role.kubernetes.io/master"]; ok {
+			masters = append(masters, &n)
+		} else if _, ok := n.Labels["node-role.kubernetes.io/control-plane"]; ok {
+			masters = append(masters, &n)
+		}
+	}
+
+	return masters, nil
 }
 
 func deployKubeAgent(op *options.UpgradeOption, cluster types.ClusterM, changeClusters map[string]string) error {

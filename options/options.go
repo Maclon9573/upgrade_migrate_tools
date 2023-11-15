@@ -31,8 +31,18 @@ type UpgradeOption struct {
 	BCSApiGateway BCSConf   `json:"bcs_api_gateway"`
 	BCSCertName   string    `json:"bcs_cert_name"`
 	BKClusterID   string    `json:"bk_cluster_id"`
+	BCSCc         BCSCc     `json:"bcs_cc"`
 	KubeAgent     KubeAgent `json:"kube_agent"`
 	K8SWatch      K8SWatch  `json:"k8s_watch"`
+}
+
+// BCSCc bcs cc
+type BCSCc struct {
+	Addr      string `json:"addr"`
+	SsmHost   string `json:"ssm_host"`
+	BkToken   string `json:"bk_token"`
+	AppCode   string `json:"app_code"`
+	AppSecret string `json:"app_secret"`
 }
 
 // BCSConf bcs configuration
