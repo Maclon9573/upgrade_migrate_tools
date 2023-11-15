@@ -188,9 +188,10 @@ func (app *App) migrateClusters() ([]types.ClusterM, map[string]string, error) {
 
 	dupClusters := make([]types.ClusterM, 0)
 	for _, c := range clusters {
+		now := time.Now()
 		clusterM := types.ClusterM{
-			CreateTime:  c.CreatedAt.Format("2006-01-02T15:04:05Z"),
-			UpdateTime:  c.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+			CreateTime:  now.Format("2006-01-02T15:04:05Z"),
+			UpdateTime:  now.Format("2006-01-02T15:04:05Z"),
 			ClusterID:   c.ClusterID,
 			ClusterName: c.Name,
 			Provider:    "bluekingCloud",
