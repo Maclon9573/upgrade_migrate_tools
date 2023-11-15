@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: bcs-kube-agent-v2
-  namespace: bcs-node     # migrate tool会根据json配置文件中kube_agent.namespace渲染
 spec:
   progressDeadlineSeconds: 600
   replicas: 1

@@ -444,6 +444,7 @@ func createKubeAgent(op *options.UpgradeOption, clientset *kubernetes.Clientset,
 	if err != nil {
 		return err
 	}
+	deployment.Namespace = op.KubeAgent.Namespace
 	deployment.Spec.Template.Spec.Containers[0].Args = append(deployment.Spec.Template.Spec.Containers[0].Args,
 		fmt.Sprintf("--bke-address=wss://%s", gAddr[1]),
 		fmt.Sprintf("--cluster-id=%s", clusterID))
