@@ -55,6 +55,7 @@ type KubeAgent struct {
 	Enable          bool   `json:"enable"`
 	HelmPackagePath string `json:"helm_package_path"`
 	Namespace       string `json:"namespace"`
+	ServiceAccount  string `json:"service_account"`
 	Image           string `json:"image"`
 }
 

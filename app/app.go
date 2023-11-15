@@ -488,9 +488,25 @@ func createKubeAgent(op *options.UpgradeOption, clientset *kubernetes.Clientset,
 							},
 						},
 					},
-					DeprecatedServiceAccount: "bcs-kube-agent",
-					ServiceAccountName:       "bcs-kube-agent",
-					HostAliases:              hostAliaas,
+					DeprecatedServiceAccount: op.KubeAgent.ServiceAccount,
+					ServiceAccountName:       op.KubeAgent.ServiceAccount,
+					Affinity: &corev1.Affinity{
+						NodeAffinity: &corev1.NodeAffinity{
+							RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+								NodeSelectorTerms: []corev1.NodeSelectorTerm{
+									{
+										MatchExpressions: []corev1.NodeSelectorRequirement{
+											{
+												Key:      "bcs-node",
+												Operator: corev1.NodeSelectorOpExists,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+					HostAliases: hostAliaas,
 					Volumes: []corev1.Volume{
 						{
 							Name: "bcs-certs",

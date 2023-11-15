@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bcs-kube-agent-v2
+  namespace: bcs-node     # migrate tool会根据json配置文件中kube_agent.namespace渲染
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: bcs-kube-agent-v2
+      platform: bk-bcs
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: bcs-kube-agent-v2
+        platform: bk-bcs
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: bcs-node
+                    operator: Exists
+      containers:
+        - args:
+            - --bke-address=    # migrate tool会根据json配置文件中bcs_api_gateway.addr渲染
+            - --cluster-id=     # migrate tool会自动渲染
+            - --insecureSkipVerify=true
+            - --verbosity=3
+            - --use-websocket=true
+            - --websocket-path=/bcsapi/v4/clustermanager/v1/websocket/connect
+          env:
+            - name: USER_TOKEN
+              value: bcsApiGatewayBearerToken # migrate tool会根据json配置文件中bcs_api_gateway.token渲染
+            - name: CLIENT_CA
+              value: /data/bcs/cert/bcs/bcs-ca.crt
+            - name: CLIENT_CERT
+              value: /data/bcs/cert/bcs/bcs-client.crt
+            - name: CLIENT_KEY
+              value: /data/bcs/cert/bcs/bcs-client.key
+          image:    # migrate tool会根据json配置文件中kube_agent.image渲染
+          imagePullPolicy: IfNotPresent
+          name: bcs-kube-agent-v2
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1000Mi
+            requests:
+              cpu: 500m
+              memory: 500Mi
+          volumeMounts:
+            - name: bcs-certs
+              mountPath: /data/bcs/cert/bcs
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: bcs-kube-watch  # migrate tool会根据json配置文件中kube_agent.service_account渲染
+      serviceAccountName: bcs-kube-watch  # migrate tool会根据json配置文件中kube_agent.service_account渲染
+      terminationGracePeriodSeconds: 30
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+        - operator: Exists
+      volumes:
+        - name: bcs-certs
+          secret:
+            secretName: bcs-client-bcs-services-stack
+            items:
+              - key: ca.crt
+                path: bcs-ca.crt
+              - key: tls.crt
+                path: bcs-client.crt
+              - key: tls.key
+                path: bcs-client.key
+            defaultMode: 420
