@@ -18,6 +18,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
+	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/client-go/kubernetes/scheme"
 	"net"
 	"sort"
@@ -46,6 +47,12 @@ import (
 const (
 	mongoDBNameCluster           = "clustermanager"
 	mongoDBCollectionNameCluster = "bcsclustermanagerv2_cluster"
+)
+
+const (
+	defaultEsbURL         = "http://9.140.129.207:8081"
+	defaultWebhookImage   = "xxx.com:8090/public/bcs/k8s/bcs-webhook-server:1.2.0"
+	defaultPrivilegeImage = "xxx.com:8090/public/bcs/k8s/gcs-privilege:1.0.0"
 )
 
 // App for app
@@ -334,9 +341,9 @@ func createClusterInCc(op *options.UpgradeOption, cluster types.ClusterM) error 
 		return err
 	}
 
-	masterIPs := make([]components.CreateMasterData, 0)
+	masterData := make([]components.CreateMasterData, 0)
 	for ip, _ := range cluster.Master {
-		masterIPs = append(masterIPs, components.CreateMasterData{InnerIP: ip})
+		masterData = append(masterData, components.CreateMasterData{InnerIP: ip})
 	}
 
 	clusterNum, _ := strconv.Atoi(strings.TrimPrefix(cluster.ClusterID, "BCS-K8S-"))
@@ -352,10 +359,64 @@ func createClusterInCc(op *options.UpgradeOption, cluster types.ClusterM) error 
 			Environment: "prod",
 			AreaID:      1,
 			Status:      cluster.Status,
-			MasterIPs:   masterIPs,
+			MasterIPs:   masterData,
 		})
 	if err != nil {
 		blog.Errorf("sync cluster %s[%s] to bcs cc failed, %v", cluster.ClusterName, cluster.ClusterID, err)
+		return err
+	}
+
+	masterIPs := make([]string, 0)
+	for ip := range cluster.Master {
+		masterIPs = append(masterIPs, ip)
+	}
+
+	clusterSnapInfo := &components.ClusterSnapShootInfo{
+		Regions:      cluster.Region,
+		ClusterID:    cluster.ClusterID,
+		MasterIPList: masterIPs,
+		VpcID:        cluster.VpcID,
+		SystemDataID: 21449,
+		ClusterType:  cluster.ClusterType,
+		ClusterBasicSettings: components.ClusterBasicInfo{
+			ClusterVersion: cluster.ClusterBasicSettings.Version,
+			ClusterName:    cluster.ClusterName,
+		},
+		NetWorkType:    cluster.NetworkType,
+		EsbURL:         defaultEsbURL,
+		WebhookImage:   defaultWebhookImage,
+		PrivilegeImage: defaultPrivilegeImage,
+		VersionName:    cluster.ClusterBasicSettings.Version,
+		Version:        cluster.ClusterBasicSettings.Version,
+		ClusterVersion: cluster.ClusterBasicSettings.Version,
+		ControlIP: func() string {
+			if len(masterIPs) > 0 {
+				return masterIPs[0]
+			}
+			return ""
+		}(),
+		MasterIPs:      masterIPs,
+		Env:            cluster.Environment,
+		ProjectName:    cluster.ProjectID,
+		ProjectCode:    cluster.ProjectID,
+		AreaName:       cluster.Region,
+		ExtraClusterID: cluster.SystemID,
+	}
+
+	conf, err := json.Marshal(clusterSnapInfo)
+	if err != nil {
+		blog.Errorf("marshal clusterSnapInfo failed: %v", err)
+		conf = make([]byte, 0)
+	}
+
+	err = components.CreateClusterSnapshot(op.BCSCc.Addr, cluster.ClusterID, resp.Data.AccessToken, op.Debug,
+		&components.CreateClusterConfParams{
+			Creator:   cluster.Creator,
+			ClusterID: cluster.ClusterID,
+			Configure: string(conf),
+		})
+	if err != nil {
+		blog.Errorf("create cluster %s[%s] snapshot failed, %v", cluster.ClusterName, cluster.ClusterID, err)
 		return err
 	}
 

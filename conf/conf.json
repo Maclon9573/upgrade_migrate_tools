@@ -10,7 +10,7 @@
   },
   "mysql_dsn": "",
   "bcs_api_gateway": {
-    "addr": "http://bcs-api.bkce7.xxx.com",
+    "addr": "http://bcs-api.xxx.com",
     "ip": "",
     "token": ""
   },
@@ -21,9 +21,8 @@
     "password": ""
   },
   "bcs_cc": {
-    "addr": "http://bcs-cc.bkce7.xxx.com",
-    "ssm_host": "http://bkssm.bkce7.xxx.com",
-    "bk_token": "",
+    "addr": "http://bcs-cc.xxx.com",
+    "ssm_host": "http://bkssm.xxx.com",
     "app_code": "",
     "app_secret": ""
   },

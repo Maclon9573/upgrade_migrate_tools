@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"github.com/Tencent/bk-bcs/install/upgradetool/options"
 	"github.com/Tencent/bk-bcs/install/upgradetool/types"
+	"net/http"
 
 	"github.com/Tencent/bk-bcs/bcs-common/common/blog"
 	"github.com/parnurzeal/gorequest"
@@ -86,20 +87,77 @@ type CreateMasterData struct {
 
 // SyncClusterResponse sync cluster resp
 type SyncClusterResponse struct {
-	Code      uint32        `json:"code"`
-	Message   string        `json:"message"`
-	Data      types.Cluster `json:"data"`
-	RequestID string        `json:"request_id"`
-	Result    bool          `json:"result"`
+	CommonResp
+	Data   types.Cluster `json:"data"`
+	Result bool          `json:"result"`
+}
+
+// CreateClusterConfParams xxx
+type CreateClusterConfParams struct {
+	Creator   string `json:"creator"`
+	ClusterID string `json:"cluster_id"`
+	Configure string `json:"configure"`
+}
+
+// CommonResp common resp
+type CommonResp struct {
+	Code      uint   `json:"code"`
+	Message   string `json:"message"`
+	RequestID string `json:"request_id"`
+}
+
+// ClusterSnapShootInfo snapInfo
+type ClusterSnapShootInfo struct {
+	Regions                 string              `json:"regions"`
+	ClusterID               string              `json:"cluster_id"`
+	MasterIPList            []string            `json:"master_ip_list"`
+	VpcID                   string              `json:"vpc_id"`
+	SystemDataID            uint32              `json:"bcs_system_data_id"`
+	ClusterCIDRSettings     ClusterCIDRInfo     `json:"ClusterCIDRSettings"`
+	ClusterType             string              `json:"ClusterType"`
+	ClusterBasicSettings    ClusterBasicInfo    `json:"ClusterBasicSettings"`
+	ClusterAdvancedSettings ClusterAdvancedInfo `json:"ClusterAdvancedSettings"`
+	NetWorkType             string              `json:"network_type"`
+	EsbURL                  string              `json:"esb_url"`
+	WebhookImage            string              `json:"bcs_webhook_image"`
+	PrivilegeImage          string              `json:"gcs_privilege_image"`
+	VersionName             string              `json:"version_name"`
+	Version                 string              `json:"version"`
+	ClusterVersion          string              `json:"ClusterVersion"`
+	ControlIP               string              `json:"control_ip"`
+	MasterIPs               []string            `json:"master_ips"`
+	Env                     string              `json:"environment"`
+	ProjectName             string              `json:"product_name"`
+	ProjectCode             string              `json:"project_code"`
+	AreaName                string              `json:"area_name"`
+	ExtraClusterID          string              `json:"extra_cluster_id"`
+}
+
+// ClusterCIDRInfo cidrInfo
+type ClusterCIDRInfo struct {
+	ClusterCIDR          string `json:"ClusterCIDR"`
+	MaxNodePodNum        uint32 `json:"MaxNodePodNum"`
+	MaxClusterServiceNum uint32 `json:"MaxClusterServiceNum"`
+}
+
+// ClusterBasicInfo basicInfo
+type ClusterBasicInfo struct {
+	ClusterOS      string `json:"ClusterOs"`
+	ClusterVersion string `json:"ClusterVersion"`
+	ClusterName    string `json:"ClusterName"`
+}
+
+// ClusterAdvancedInfo advancedInfo
+type ClusterAdvancedInfo struct {
+	IPVS bool `json:"IPVS"`
 }
 
 // GetAccessToken get access token
 func GetAccessToken(cc options.BCSCc, debug bool) (*AccessTokenResponse, error) {
 	resp := &AccessTokenResponse{}
 	req := &AccessTokenReq{
-		GrantType:  "authorization_code",
-		IdProvider: "bk_login",
-		BkToken:    cc.BkToken,
+		GrantType:  "client_credentials",
+		IdProvider: "client",
 	}
 	result, body, errs := gorequest.New().
 		Timeout(defaultTimeOut).
@@ -117,14 +175,10 @@ func GetAccessToken(cc options.BCSCc, debug bool) (*AccessTokenResponse, error) 
 		return nil, errs[0]
 	}
 
-	if result.StatusCode != 200 {
-		errMsg := fmt.Errorf("call bkssm api error: code[%d], %s",
-			result.StatusCode, string(body))
+	if result.StatusCode != http.StatusOK || resp.Code != 0 {
+		errMsg := fmt.Errorf("call bkssm api error: code[%v], body[%v], err[%s]",
+			result.StatusCode, string(body), resp.Message)
 		return nil, errMsg
-	}
-
-	if resp.Code != 0 {
-		return nil, fmt.Errorf(resp.Message)
 	}
 
 	return resp, nil
@@ -147,15 +201,37 @@ func SyncClusterToCc(host, projectID, token string, debug bool, req *SyncCluster
 		return nil, errs[0]
 	}
 
-	if result.StatusCode != 200 {
-		errMsg := fmt.Errorf("call bcs cc api error: code[%d], %s",
-			result.StatusCode, string(body))
+	if result.StatusCode != http.StatusOK || resp.Code != 0 {
+		errMsg := fmt.Errorf("call bcs cc api error: code[%v], body[%v], err[%s]",
+			result.StatusCode, string(body), resp.Message)
 		return nil, errMsg
 	}
 
-	if resp.Code != 0 {
-		return nil, fmt.Errorf(resp.Message)
+	return resp, nil
+}
+
+// CreateClusterSnapshot register cluster scapshoot to bcs cc
+func CreateClusterSnapshot(host, clusterID, token string, debug bool, req *CreateClusterConfParams) error {
+	resp := &CommonResp{}
+	result, body, errs := gorequest.New().Timeout(defaultTimeOut).
+		Post(fmt.Sprintf("%s/v1/clusters/%s/cluster_config", host, clusterID)).
+		Query(fmt.Sprintf("access_token=%s", token)).
+		Set("Content-Type", "application/json").
+		Set("Connection", "close").
+		SetDebug(debug).
+		Send(req).
+		EndStruct(resp)
+
+	if len(errs) > 0 {
+		blog.Errorf("call bcs cc api failed: %v", errs[0])
+		return errs[0]
 	}
 
-	return resp, nil
+	if result.StatusCode != http.StatusOK || resp.Code != 0 {
+		errMsg := fmt.Errorf("call bcs cc api error: code[%v], body[%v], err[%s]",
+			result.StatusCode, string(body), resp.Message)
+		return errMsg
+	}
+
+	return nil
 }

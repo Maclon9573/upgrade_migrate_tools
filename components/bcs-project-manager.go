@@ -16,6 +16,7 @@ package components
 import (
 	"crypto/tls"
 	"fmt"
+	"net/http"
 
 	"github.com/Tencent/bk-bcs/bcs-common/common/blog"
 	_struct "github.com/golang/protobuf/ptypes/struct"
@@ -103,14 +104,10 @@ func CreateProject(host, token string, debug bool, req *CreateProjectRequest) (*
 		return nil, errs[0]
 	}
 
-	if result.StatusCode != 200 {
-		errMsg := fmt.Errorf("call bcs project manager api error: code[%d], %s",
-			result.StatusCode, string(body))
+	if result.StatusCode != http.StatusOK || resp.Code != 0 {
+		errMsg := fmt.Errorf("call bcs project manager api error: code[%v], body[%v], err[%s]",
+			result.StatusCode, string(body), resp.Message)
 		return nil, errMsg
-	}
-
-	if resp.Code != 0 {
-		return nil, fmt.Errorf(resp.Message)
 	}
 
 	return resp, nil
