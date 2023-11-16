@@ -20,7 +20,7 @@
     "username": "",
     "password": ""
   },
-  "bcs-cc": {
+  "bcs_cc": {
     "addr": "http://bcs-cc.bkce7.xxx.com",
     "ssm_host": "http://bkssm.bkce7.xxx.com",
     "bk_token": "",

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"k8s.io/client-go/kubernetes/scheme"
+	"net"
 	"sort"
 	"strconv"
 	"strings"
@@ -239,6 +240,13 @@ func (app *App) migrateClusters() ([]types.ClusterM, map[string]string, error) {
 					clusterM.ClusterName, clusterM.ClusterID)
 				continue
 			}
+			masters, err := getMasterNodes(app.op, clusterM, changedClusters)
+			if err != nil {
+				blog.Errorf("get master nodes for cluster %s[%s] failed, %v",
+					clusterM.ClusterName, clusterM.ClusterID, err)
+				continue
+			}
+			clusterM = addClusterInfo(masters, clusterM)
 			_, err = clusterCol.InsertOne(context.Background(), clusterM)
 			if err != nil {
 				if strings.Contains(err.Error(), "duplicate key") {
@@ -251,7 +259,7 @@ func (app *App) migrateClusters() ([]types.ClusterM, map[string]string, error) {
 				continue
 			}
 
-			err = createClusterInCc(app.op, clusterM, changedClusters)
+			err = createClusterInCc(app.op, clusterM)
 			if err != nil {
 				failedClusters = append(failedClusters, clusterM)
 				continue
@@ -267,13 +275,58 @@ func (app *App) migrateClusters() ([]types.ClusterM, map[string]string, error) {
 	return successClusters, changedClusters, nil
 }
 
-func createClusterInCc(op *options.UpgradeOption, cluster types.ClusterM, changedClusters map[string]string) error {
-	blog.Infof("sync cluster %s[%s] to bcs cc", cluster.ClusterName, cluster.ClusterID)
-	masters, err := getMasterNodes(op, cluster, changedClusters)
-	if err != nil {
-		blog.Errorf("get master nodes for cluster %s[%s] failed, %v", cluster.ClusterName, cluster.ClusterID, err)
-		return err
+func addClusterInfo(masters []*corev1.Node, cluster types.ClusterM) types.ClusterM {
+	for _, m := range masters {
+		for _, ip := range m.Status.Addresses {
+			var ipv4, ipv6 net.IP
+			if ip.Type == corev1.NodeInternalIP {
+				addr := net.ParseIP(ip.Address)
+				if addr != nil && strings.Contains(addr.String(), ".") {
+					ipv4 = addr
+				}
+				if addr != nil && strings.Contains(addr.String(), ".") {
+					ipv6 = addr
+				}
+			}
+			if ipv4 != nil && ipv6 != nil {
+				cluster.Master[ipv4.String()] = &types.Node{
+					InnerIP:   ipv4.String(),
+					InnerIPv6: ipv6.String(),
+					Status:    string(m.Status.Phase),
+					Region:    "default",
+				}
+			} else if ipv4 != nil {
+				cluster.Master[ipv4.String()] = &types.Node{
+					InnerIP: ipv4.String(),
+					Status:  string(m.Status.Phase),
+					Region:  "default",
+				}
+			} else if ipv6 != nil {
+				cluster.Master[ipv6.String()] = &types.Node{
+					InnerIPv6: ipv6.String(),
+					Status:    string(m.Status.Phase),
+					Region:    "default",
+				}
+			}
+		}
 	}
+
+	if len(masters) > 0 {
+		cri := strings.Split(masters[0].Status.NodeInfo.ContainerRuntimeVersion, "://")
+		if len(cri) == 2 {
+			cluster.ClusterAdvanceSettings = &types.ClusterAdvanceSetting{
+				ContainerRuntime: cri[0],
+				RuntimeVersion:   cri[1],
+			}
+		}
+
+	}
+
+	return cluster
+}
+
+func createClusterInCc(op *options.UpgradeOption, cluster types.ClusterM) error {
+	blog.Infof("sync cluster %s[%s] to bcs cc", cluster.ClusterName, cluster.ClusterID)
 
 	resp, err := components.GetAccessToken(op.BCSCc, op.Debug)
 	if err != nil {
@@ -282,13 +335,8 @@ func createClusterInCc(op *options.UpgradeOption, cluster types.ClusterM, change
 	}
 
 	masterIPs := make([]components.CreateMasterData, 0)
-	for _, m := range masters {
-		for _, ip := range m.Status.Addresses {
-			if ip.Type == corev1.NodeInternalIP {
-				masterIPs = append(masterIPs, components.CreateMasterData{InnerIP: ip.Address})
-				break
-			}
-		}
+	for ip, _ := range cluster.Master {
+		masterIPs = append(masterIPs, components.CreateMasterData{InnerIP: ip})
 	}
 
 	clusterNum, _ := strconv.Atoi(strings.TrimPrefix(cluster.ClusterID, "BCS-K8S-"))
@@ -336,7 +384,7 @@ func (app *App) processDupClusters(dupClusters, success, failed []types.ClusterM
 				failed = append(failed, c)
 				continue
 			}
-			err = createClusterInCc(app.op, c, changedClusters)
+			err = createClusterInCc(app.op, c)
 			if err != nil {
 				failed = append(failed, c)
 				continue
@@ -385,6 +433,12 @@ func getMasterNodes(op *options.UpgradeOption, cluster types.ClusterM, changeClu
 	if err != nil {
 		return nil, err
 	}
+
+	version, err := clientset.DiscoveryClient.ServerVersion()
+	if err != nil {
+		return nil, err
+	}
+	cluster.ClusterBasicSettings = &types.ClusterBasicSetting{Version: version.GitVersion}
 
 	masters := make([]*corev1.Node, 0)
 	nodeList, err := clientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
