@@ -209,29 +209,3 @@ func SyncClusterToCc(host, projectID, token string, debug bool, req *SyncCluster
 
 	return resp, nil
 }
-
-// CreateClusterSnapshot register cluster scapshoot to bcs cc
-func CreateClusterSnapshot(host, clusterID, token string, debug bool, req *CreateClusterConfParams) error {
-	resp := &CommonResp{}
-	result, body, errs := gorequest.New().Timeout(defaultTimeOut).
-		Post(fmt.Sprintf("%s/v1/clusters/%s/cluster_config", host, clusterID)).
-		Query(fmt.Sprintf("access_token=%s", token)).
-		Set("Content-Type", "application/json").
-		Set("Connection", "close").
-		SetDebug(debug).
-		Send(req).
-		EndStruct(resp)
-
-	if len(errs) > 0 {
-		blog.Errorf("call bcs cc api failed: %v", errs[0])
-		return errs[0]
-	}
-
-	if result.StatusCode != http.StatusOK || resp.Code != 0 {
-		errMsg := fmt.Errorf("call bcs cc api error: code[%v], body[%v], err[%s]",
-			result.StatusCode, string(body), resp.Message)
-		return errMsg
-	}
-
-	return nil
-}
