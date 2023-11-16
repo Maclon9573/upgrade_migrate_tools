@@ -191,22 +191,25 @@ func (app *App) migrateClusters() ([]types.ClusterM, map[string]string, error) {
 	for _, c := range clusters {
 		now := time.Now()
 		clusterM := types.ClusterM{
-			CreateTime:  now.Format("2006-01-02T15:04:05Z"),
-			UpdateTime:  now.Format("2006-01-02T15:04:05Z"),
-			ClusterID:   c.ClusterID,
-			ClusterName: c.Name,
-			Provider:    "bluekingCloud",
-			Region:      "default",
-			ProjectID:   c.ProjectID,
-			BusinessID:  app.getClusterBusinessID(c.ProjectID),
-			Environment: c.Environment,
-			EngineType:  c.Type,
-			ClusterType: "single",
-			Creator:     c.Creator,
-			ManageType:  "INDEPENDENT_CLUSTER",
-			Status:      "RUNNING",
-			NetworkType: "overlay",
-			Description: c.Description,
+			CreateTime:             now.Format("2006-01-02T15:04:05Z"),
+			UpdateTime:             now.Format("2006-01-02T15:04:05Z"),
+			ClusterID:              c.ClusterID,
+			ClusterName:            c.Name,
+			Provider:               "bluekingCloud",
+			Region:                 "default",
+			ProjectID:              c.ProjectID,
+			BusinessID:             app.getClusterBusinessID(c.ProjectID),
+			Environment:            c.Environment,
+			EngineType:             c.Type,
+			ClusterType:            "single",
+			Creator:                c.Creator,
+			ManageType:             "INDEPENDENT_CLUSTER",
+			Master:                 map[string]*types.Node{},
+			ClusterBasicSettings:   &types.ClusterBasicSetting{},
+			ClusterAdvanceSettings: &types.ClusterAdvanceSetting{},
+			Status:                 "RUNNING",
+			NetworkType:            "overlay",
+			Description:            c.Description,
 		}
 
 		existClustersMongo := make([]types.ClusterM, 0)
@@ -314,12 +317,9 @@ func addClusterInfo(masters []*corev1.Node, cluster types.ClusterM) types.Cluste
 	if len(masters) > 0 {
 		cri := strings.Split(masters[0].Status.NodeInfo.ContainerRuntimeVersion, "://")
 		if len(cri) == 2 {
-			cluster.ClusterAdvanceSettings = &types.ClusterAdvanceSetting{
-				ContainerRuntime: cri[0],
-				RuntimeVersion:   cri[1],
-			}
+			cluster.ClusterAdvanceSettings.ContainerRuntime = cri[0]
+			cluster.ClusterAdvanceSettings.RuntimeVersion = cri[1]
 		}
-
 	}
 
 	return cluster
@@ -438,7 +438,7 @@ func getMasterNodes(op *options.UpgradeOption, cluster types.ClusterM, changeClu
 	if err != nil {
 		return nil, err
 	}
-	cluster.ClusterBasicSettings = &types.ClusterBasicSetting{Version: version.GitVersion}
+	cluster.ClusterBasicSettings.Version = version.GitVersion
 
 	masters := make([]*corev1.Node, 0)
 	nodeList, err := clientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
