@@ -16,12 +16,13 @@ package components
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/Tencent/bk-bcs/install/upgradetool/options"
-	"github.com/Tencent/bk-bcs/install/upgradetool/types"
 	"net/http"
 
 	"github.com/Tencent/bk-bcs/bcs-common/common/blog"
 	"github.com/parnurzeal/gorequest"
+
+	"github.com/Tencent/bk-bcs/install/upgradetool/options"
+	"github.com/Tencent/bk-bcs/install/upgradetool/types"
 )
 
 // AccessTokenReq access token request

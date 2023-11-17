@@ -446,6 +446,17 @@ func getMasterNodes(op *options.UpgradeOption, cluster types.ClusterM, changeClu
 	}
 	cluster.ClusterBasicSettings.Version = version.GitVersion
 
+	configmap, err := clientset.CoreV1().ConfigMaps("kube-system").
+		Get(context.Background(), "kube-proxy", metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	if value, ok := configmap.Data["config.conf"]; ok {
+		if strings.Contains(value, "mode: ipvs") {
+			cluster.ClusterAdvanceSettings.IPVS = true
+		}
+	}
+
 	masters := make([]*corev1.Node, 0)
 	nodeList, err := clientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
 	if err != nil {

@@ -155,9 +155,6 @@ type ClusterM struct {
 	KubeConfig              string                    `json:"kubeConfig,omitempty"`
 	ImportCategory          string                    `json:"importCategory,omitempty"`
 	CloudAccountID          string                    `json:"cloudAccountID,omitempty"`
-	Area                    *CloudArea                `json:"area,omitempty"`
-	Module                  *ModuleInfo               `json:"module,omitempty"`
-	ClusterConnectSetting   *ClusterConnectSetting    `json:"clusterConnectSetting,omitempty"`
 }
 
 // ClusterConnectSetting ApiServer内外网访问信息
