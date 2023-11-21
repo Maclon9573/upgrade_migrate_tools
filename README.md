@@ -1,4 +1,4 @@
-# BCS集群迁移方案
+# BCS集群迁移工具
 
 ### 背景
 
@@ -17,7 +17,7 @@ BCS现采用容器化部署，与老版本之间版本跨度较大，无法平�
 | 新环境bcs api（bcs-api.xxx.com）、bcs cc（bcs-cc.xxx.com）、bkssm（bkssm.xxx.com） | 80/443       |
 | 新环境bcs使用的MongoDB                                       | 27017        |
 
-### **环境信息**
+### 环境信息
 
 旧版本：v1.18
 
@@ -46,7 +46,7 @@ go build -o cluster-migrate-tool main.go
 
 conf.json配置说明：
 
-```json
+```
 {
   "alsologtostderr": true,  // 打印日志到标准输出
   "log_dir": "./logs",    // 日志存放目录，需要提前创建
@@ -87,11 +87,9 @@ conf.json配置说明：
 }
 ```
 
-注意：
+说明：
 
-- 可以更加需要配置kube agent的Deployment，如修改nodeAffinity、resources等
-
-- **bcs-kube-agent:v1.28.2-beta.2的镜像有bug，会导致集群证书上报失败，请使用tar包中的镜像**
+- 可以根据需要更改kube agent的Deployment，如修改nodeAffinity、resources等
 
 #### **二进制版本的bcs api的认证token**
 
@@ -99,7 +97,7 @@ conf.json配置说明：
 
 方法二：在bcs-cc的配置文件(一般为/data/bkee/etc/bcs/cc.yml)中，最后一行Bearer后面即为admin token
 
-#### **容器化版本的bcs api gateway token**
+#### 容器化版本的bcs api gateway token
 
 使用webconsole登录蓝鲸集群，执行
 
@@ -107,7 +105,7 @@ conf.json配置说明：
 kubectl get secrets -n bcs-system bcs-password -oyaml |awk '/  gateway_token:/ {print $2}'| base64 -d
 ```
 
-#### **bcs_cert_name获取**
+#### bcs_cert_name获取
 
 使用webconsole登录蓝鲸集群，执行
 
