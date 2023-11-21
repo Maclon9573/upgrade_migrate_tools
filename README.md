@@ -52,7 +52,7 @@ conf.json配置说明：
   "log_dir": "./logs",    // 日志存放目录，需要提前创建
   "v": "3",   // 日志等级
   "debug": true,    // 是否开启http请求的debug模式
-  "project_ids": ["cf3db89c728c42ea99a257b47c7421a4"],    // 需要迁移项目id列表，如果为空，默认迁移所有项目
+  "project_ids": [],    // 需要迁移项目id列表，如果为空，默认迁移所有项目
   "migrate_project_data": true,    // 是否迁移项目数据，如果项目数据已经使用本工具迁移完成，则设置为false
   "migrate_cluster_data": true,    // 是否迁移集群数据，如果集群数据已经使用本工具迁移完成，则设置为false
   "bcs_api": {   // 二进制版本的bcs api配置
@@ -65,10 +65,10 @@ conf.json配置说明：
     "token": ""  //  bcs api gateway的认证token，推荐使用admin token（获取方式见下文）
   },
   "mongoDB": {    // 容器化版本的bcs MongoDB配置
-    "host": "mongodb.service.consul",
-    "port": "27017",
-    "username": "root",
-    "password": "zVAtkpmGQG0m"
+    "host": "",
+    "port": "",
+    "username": "",
+    "password": ""
   },
   "bcs_cc": {   // 容器化版本的bcs cc配置
     "addr": "http://bcs-cc.xxx.com",
