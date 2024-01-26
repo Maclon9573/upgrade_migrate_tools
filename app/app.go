@@ -342,7 +342,10 @@ func createClusterInCc(op *options.UpgradeOption, cluster types.ClusterM) error 
 
 	masterData := make([]components.CreateMasterData, 0)
 	for ip, _ := range cluster.Master {
-		masterData = append(masterData, components.CreateMasterData{InnerIP: ip})
+		masterData = append(masterData, components.CreateMasterData{
+			InnerIP: ip,
+			Status:  "normal",
+		})
 	}
 
 	clusterNum, _ := strconv.Atoi(strings.TrimPrefix(cluster.ClusterID, "BCS-K8S-"))
@@ -362,6 +365,15 @@ func createClusterInCc(op *options.UpgradeOption, cluster types.ClusterM) error 
 		})
 	if err != nil {
 		blog.Errorf("sync cluster %s[%s] to bcs cc failed, %v", cluster.ClusterName, cluster.ClusterID, err)
+		return err
+	}
+
+	err = components.UpdateCluster(op.BCSCc.Addr, cluster.ProjectID, cluster.ClusterID, resp.Data.AccessToken, op.Debug,
+		&components.ClusterParamsRequest{
+			Status: "normal",
+		})
+	if err != nil {
+		blog.Errorf("update %s[%s] status in bcs cc failed, %v", cluster.ClusterName, cluster.ClusterID, err)
 		return err
 	}
 

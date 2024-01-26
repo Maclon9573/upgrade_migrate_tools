@@ -93,18 +93,37 @@ type SyncClusterResponse struct {
 	Result bool          `json:"result"`
 }
 
-// CreateClusterConfParams xxx
-type CreateClusterConfParams struct {
-	Creator   string `json:"creator"`
-	ClusterID string `json:"cluster_id"`
-	Configure string `json:"configure"`
-}
-
 // CommonResp common resp
 type CommonResp struct {
 	Code      uint   `json:"code"`
 	Message   string `json:"message"`
 	RequestID string `json:"request_id"`
+}
+
+// ClusterParamsRequest xxx
+type ClusterParamsRequest struct {
+	ClusterID          string           `json:"cluster_id"`
+	ClusterName        string           `json:"name"`
+	ClusterDescription string           `json:"description"`
+	AreaID             int              `json:"area_id"`
+	VpcID              string           `json:"vpc_id"`
+	Env                string           `json:"environment"`
+	MasterIPs          []ManagerMasters `json:"master_ips"`
+	NeedNAT            bool             `json:"need_nat"`
+	Version            string           `json:"version"`
+	NetworkType        string           `json:"network_type"`
+	Coes               string           `json:"coes"`
+	KubeProxyMode      string           `json:"kube_proxy_mode"`
+	Creator            string           `json:"creator"`
+	Type               string           `json:"type"`
+	ExtraClusterID     string           `json:"extra_cluster_id"`
+	State              string           `json:"state"`
+	Status             string           `json:"status"`
+}
+
+// ManagerMasters masterIP
+type ManagerMasters struct {
+	InnerIP string `json:"inner_ip"`
 }
 
 // ClusterSnapShootInfo snapInfo
@@ -151,6 +170,33 @@ type ClusterBasicInfo struct {
 // ClusterAdvancedInfo advancedInfo
 type ClusterAdvancedInfo struct {
 	IPVS bool `json:"IPVS"`
+}
+
+// UpdateNodeParams update node params
+type UpdateNodeParams struct {
+	NodeUpdateDataJSON
+	ClusterID string `json:"cluster_id" binding:"required"`
+}
+
+// NodeListUpdateDataJSON node list update data
+type NodeListUpdateDataJSON struct {
+	Updates []UpdateNodeParams `json:"updates" binding:"required,dive"`
+}
+
+// NodeUpdateDataJSON node update data
+type NodeUpdateDataJSON struct {
+	InnerIP     string `binding:"required" json:"inner_ip"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Status      string `json:"status"`
+	InstanceID  string `json:"instance_id"`
+}
+
+// NodeListUpdateResponse node list update resp
+type NodeListUpdateResponse struct {
+	CommonResp
+	Data   string `json:"data"`
+	Result bool   `json:"result"`
 }
 
 // GetAccessToken get access token
@@ -209,4 +255,56 @@ func SyncClusterToCc(host, projectID, token string, debug bool, req *SyncCluster
 	}
 
 	return resp, nil
+}
+
+// UpdateCluster update cluster in bcs cc
+func UpdateCluster(host, projectID, clusterID, token string, debug bool, req *ClusterParamsRequest) error {
+	resp := &CommonResp{}
+	result, body, errs := gorequest.New().
+		Timeout(defaultTimeOut).
+		SetDebug(debug).
+		TLSClientConfig(&tls.Config{InsecureSkipVerify: true}).
+		Put(fmt.Sprintf("%s/projects/%s/clusters/%s?access_token=%s", host, projectID, clusterID, token)).
+		Set("Content-Type", "application/json").
+		Send(req).
+		EndStruct(resp)
+
+	if len(errs) > 0 {
+		blog.Errorf("call bcs cc api failed: %v", errs[0])
+		return errs[0]
+	}
+
+	if result.StatusCode != http.StatusOK || resp.Code != 0 {
+		errMsg := fmt.Errorf("call bcs cc api error: code[%v], body[%v], err[%s]",
+			result.StatusCode, string(body), resp.Message)
+		return errMsg
+	}
+
+	return nil
+}
+
+// UpdateNodeList update node list
+func UpdateNodeList(host, projectID, token string, debug bool, req *NodeListUpdateDataJSON) error {
+	resp := &NodeListUpdateResponse{}
+	result, body, errs := gorequest.New().
+		Timeout(defaultTimeOut).
+		SetDebug(debug).
+		TLSClientConfig(&tls.Config{InsecureSkipVerify: true}).
+		Put(fmt.Sprintf("%s/projects/%s?access_token=%s", host, projectID, token)).
+		Set("Content-Type", "application/json").
+		Send(req).
+		EndStruct(resp)
+
+	if len(errs) > 0 {
+		blog.Errorf("call bcs cc api failed: %v", errs[0])
+		return errs[0]
+	}
+
+	if result.StatusCode != http.StatusOK || resp.Code != 0 {
+		errMsg := fmt.Errorf("call bcs cc api error: code[%v], body[%v], err[%s]",
+			result.StatusCode, string(body), resp.Message)
+		return errMsg
+	}
+
+	return nil
 }
