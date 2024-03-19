@@ -85,7 +85,7 @@ conf.json配置说明：
     "enable": true,   // 是否安装bcs kube agent
     "yaml_path": "/root/cluster-migrate-tool/kube-agent-deployment.yaml",   // bcs kube agent Deployment路径
     "namespace": "bcs-nodes",   // bcs kube agent命名空间，需要与老版本一致
-    "image": ""
+    "image": "" // 格式为bcs-kube-agent:v1.29.0, 不需要写仓库地址,默认新老版本使用同一个仓库
   }
 }
 ```

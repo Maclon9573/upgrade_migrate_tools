@@ -590,6 +590,15 @@ func createKubeAgentSecret(op *options.UpgradeOption, clientset *kubernetes.Clie
 }
 
 func createKubeAgent(op *options.UpgradeOption, clientset *kubernetes.Clientset, clusterID string) error {
+	oldDeployment, err := clientset.AppsV1().Deployments(op.KubeAgent.Namespace).
+		Get(context.Background(), "bcs-kube-agent", metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	index := strings.LastIndex(oldDeployment.Spec.Template.Spec.Containers[0].Image, "/")
+	imageRepo := oldDeployment.Spec.Template.Spec.Containers[0].Image[:index+1]
+
 	gAddr := strings.Split(op.BCSApiGateway.Addr, "//")
 	if len(gAddr) != 2 {
 		return fmt.Errorf("invalid bcs api gateway address")
@@ -623,13 +632,13 @@ func createKubeAgent(op *options.UpgradeOption, clientset *kubernetes.Clientset,
 			Name:  "USER_TOKEN",
 			Value: op.BCSApiGateway.Token,
 		})
-	deployment.Spec.Template.Spec.Containers[0].Image = op.KubeAgent.Image
-	deployment.Spec.Template.Spec.ServiceAccountName = op.KubeAgent.ServiceAccount
-	deployment.Spec.Template.Spec.DeprecatedServiceAccount = op.KubeAgent.ServiceAccount
+	deployment.Spec.Template.Spec.Containers[0].Image = imageRepo + op.KubeAgent.Image
+	deployment.Spec.Template.Spec.ServiceAccountName = oldDeployment.Spec.Template.Spec.ServiceAccountName
+	deployment.Spec.Template.Spec.DeprecatedServiceAccount = oldDeployment.Spec.Template.Spec.ServiceAccountName
 	deployment.Spec.Template.Spec.HostAliases = hostAliaas
-	for _, v := range deployment.Spec.Template.Spec.Volumes {
-		if v.Name == "bcs-certs" {
-			v.Secret.SecretName = op.BCSCertName
+	for k := range deployment.Spec.Template.Spec.Volumes {
+		if deployment.Spec.Template.Spec.Volumes[k].Name == "bcs-certs" {
+			deployment.Spec.Template.Spec.Volumes[k].Secret.SecretName = op.BCSCertName
 		}
 	}
 

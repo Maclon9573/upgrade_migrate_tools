@@ -32,7 +32,6 @@
     "enable": true,
     "yaml_path": "",
     "namespace": "",
-    "image": "",
-    "service_account": ""
+    "image": ""
   }
 }
