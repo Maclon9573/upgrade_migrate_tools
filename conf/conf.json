@@ -32,6 +32,10 @@
     "enable": true,
     "yaml_path": "",
     "namespace": "",
-    "image": ""
+    "version": "",
+    "images": {
+      "BCS-K8S-40000": "xxx/bcs-kube-agent",
+      "BCS-K8S-40001": "xxx/xxx/bcs-kube-agent"
+    }
   }
 }

@@ -85,7 +85,12 @@ conf.json配置说明：
     "enable": true,   // 是否安装bcs kube agent
     "yaml_path": "/root/cluster-migrate-tool/kube-agent-deployment.yaml",   // bcs kube agent Deployment路径
     "namespace": "bcs-nodes",   // bcs kube agent命名空间，需要与老版本一致
-    "image": "" // 格式为bcs-kube-agent:v1.29.0, 不需要写仓库地址,默认新老版本使用同一个仓库
+    "version": "",   // 新版本号,如v1.29.0
+    "images": {  // 适用于新老版本使用了不同的镜像仓库,否则无需填写
+      // clusterID为老版本的clusterID, 镜像地址为新版本的镜像地址
+      "BCS-K8S-40000": "xxx/bcs-kube-agent",
+      "BCS-K8S-40001": "xxx/xxx/bcs-kube-agent"
+    }
   }
 }
 ```

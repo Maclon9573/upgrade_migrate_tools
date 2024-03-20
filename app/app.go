@@ -445,9 +445,10 @@ func (app *App) generateClusterID() (int, error) {
 	return clusterNumIDs[len(clusterNumIDs)-1] + 1, nil
 }
 
-func getMasterNodes(op *options.UpgradeOption, cluster types.ClusterM, changeClusters map[string]string) ([]*corev1.Node, error) {
+func getMasterNodes(op *options.UpgradeOption, cluster types.ClusterM, changeClusters map[string]string) (
+	[]*corev1.Node, error) {
 	// create clientset from bcs-api
-	clientset, err := generateClientset(op, cluster, changeClusters)
+	clientset, _, err := generateClientset(op, cluster, changeClusters)
 	if err != nil {
 		return nil, err
 	}
@@ -488,7 +489,7 @@ func getMasterNodes(op *options.UpgradeOption, cluster types.ClusterM, changeClu
 func deployKubeAgent(op *options.UpgradeOption, cluster types.ClusterM, changeClusters map[string]string) error {
 	blog.Infof("deploying new kube agent for %s[%s]", cluster.ClusterName, cluster.ClusterID)
 	// create clientset from bcs-api
-	clientset, err := generateClientset(op, cluster, changeClusters)
+	clientset, orgClusterID, err := generateClientset(op, cluster, changeClusters)
 	if err != nil {
 		return err
 	}
@@ -498,7 +499,7 @@ func deployKubeAgent(op *options.UpgradeOption, cluster types.ClusterM, changeCl
 		return err
 	}
 
-	err = createKubeAgent(op, clientset, cluster.ClusterID)
+	err = createKubeAgent(op, clientset, cluster.ClusterID, orgClusterID)
 	if err != nil {
 		return err
 	}
@@ -509,7 +510,7 @@ func deployKubeAgent(op *options.UpgradeOption, cluster types.ClusterM, changeCl
 }
 
 func generateClientset(op *options.UpgradeOption, cluster types.ClusterM, changeClusters map[string]string) (
-	*kubernetes.Clientset, error) {
+	*kubernetes.Clientset, string, error) {
 	host := op.BCSApi.Addr
 	token := op.BCSApi.Token
 	orgClusterID := cluster.ClusterID
@@ -520,13 +521,13 @@ func generateClientset(op *options.UpgradeOption, cluster types.ClusterM, change
 	id, err := components.GetClusterIdentifier(host, token, cluster.ProjectID, orgClusterID, op.Debug)
 	if err != nil {
 		blog.Errorf("get cluster %s identifier failed, %v", orgClusterID, err)
-		return nil, err
+		return nil, "", err
 	}
 
 	resp, err := components.GetClusterCredential(host, token, id.ID, op.Debug)
 	if err != nil {
 		blog.Errorf("get cluster %s credential failed, %v", orgClusterID, err)
-		return nil, err
+		return nil, "", err
 	}
 
 	config := &rest.Config{
@@ -541,10 +542,10 @@ func generateClientset(op *options.UpgradeOption, cluster types.ClusterM, change
 	// create clientset from bcs-api
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	return clientset, nil
+	return clientset, orgClusterID, nil
 }
 
 func createKubeAgentSecret(op *options.UpgradeOption, clientset *kubernetes.Clientset) error {
@@ -589,15 +590,14 @@ func createKubeAgentSecret(op *options.UpgradeOption, clientset *kubernetes.Clie
 	return nil
 }
 
-func createKubeAgent(op *options.UpgradeOption, clientset *kubernetes.Clientset, clusterID string) error {
+func createKubeAgent(op *options.UpgradeOption, clientset *kubernetes.Clientset, clusterID, orgClusterID string) error {
 	oldDeployment, err := clientset.AppsV1().Deployments(op.KubeAgent.Namespace).
 		Get(context.Background(), "bcs-kube-agent", metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 
-	index := strings.LastIndex(oldDeployment.Spec.Template.Spec.Containers[0].Image, "/")
-	imageRepo := oldDeployment.Spec.Template.Spec.Containers[0].Image[:index+1]
+	imageInfo := strings.Split(oldDeployment.Spec.Template.Spec.Containers[0].Image, ":")
 
 	gAddr := strings.Split(op.BCSApiGateway.Addr, "//")
 	if len(gAddr) != 2 {
@@ -632,7 +632,11 @@ func createKubeAgent(op *options.UpgradeOption, clientset *kubernetes.Clientset,
 			Name:  "USER_TOKEN",
 			Value: op.BCSApiGateway.Token,
 		})
-	deployment.Spec.Template.Spec.Containers[0].Image = imageRepo + op.KubeAgent.Image
+	if value, ok := op.KubeAgent.Images[orgClusterID]; ok {
+		deployment.Spec.Template.Spec.Containers[0].Image = value + op.KubeAgent.Version
+	} else {
+		deployment.Spec.Template.Spec.Containers[0].Image = imageInfo[0] + op.KubeAgent.Version
+	}
 	deployment.Spec.Template.Spec.ServiceAccountName = oldDeployment.Spec.Template.Spec.ServiceAccountName
 	deployment.Spec.Template.Spec.DeprecatedServiceAccount = oldDeployment.Spec.Template.Spec.ServiceAccountName
 	deployment.Spec.Template.Spec.HostAliases = hostAliaas

@@ -62,12 +62,13 @@ type MongoDBConf struct {
 
 // KubeAgent bcs kube agent configuration
 type KubeAgent struct {
-	Enable          bool   `json:"enable"`
-	YamlPath        string `json:"yaml_path"`
-	HelmPackagePath string `json:"helm_package_path"`
-	Namespace       string `json:"namespace"`
-	ServiceAccount  string `json:"service_account"`
-	Image           string `json:"image"`
+	Enable          bool              `json:"enable"`
+	YamlPath        string            `json:"yaml_path"`
+	HelmPackagePath string            `json:"helm_package_path"`
+	Namespace       string            `json:"namespace"`
+	ServiceAccount  string            `json:"service_account"`
+	Version         string            `json:"version"`
+	Images          map[string]string `json:"images"`
 }
 
 // K8SWatch bcs k8s watch configuration
