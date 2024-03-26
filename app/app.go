@@ -268,11 +268,11 @@ func (app *App) migrateClusters() ([]types.ClusterM, map[string]string, error) {
 				continue
 			}
 
-			err = createClusterInCc(app.op, clusterM)
-			if err != nil {
-				failedClusters = append(failedClusters, clusterM)
-				continue
-			}
+			//err = createClusterInCc(app.op, clusterM)
+			//if err != nil {
+			//	failedClusters = append(failedClusters, clusterM)
+			//	continue
+			//}
 			successClusters = append(successClusters, clusterM)
 		}
 	}
@@ -331,54 +331,54 @@ func addClusterInfo(masters []*corev1.Node, cluster types.ClusterM) types.Cluste
 	return cluster
 }
 
-func createClusterInCc(op *options.UpgradeOption, cluster types.ClusterM) error {
-	blog.Infof("sync cluster %s[%s] to bcs cc", cluster.ClusterName, cluster.ClusterID)
-
-	resp, err := components.GetAccessToken(op.BCSCc, op.Debug)
-	if err != nil {
-		blog.Errorf("get access token failed")
-		return err
-	}
-
-	masterData := make([]components.CreateMasterData, 0)
-	for ip, _ := range cluster.Master {
-		masterData = append(masterData, components.CreateMasterData{
-			InnerIP: ip,
-			Status:  "normal",
-		})
-	}
-
-	clusterNum, _ := strconv.Atoi(strings.TrimPrefix(cluster.ClusterID, "BCS-K8S-"))
-	_, err = components.SyncClusterToCc(op.BCSCc.Addr, cluster.ProjectID, resp.Data.AccessToken, op.Debug,
-		&components.SyncClusterReq{
-			ProjectID:   cluster.ProjectID,
-			ClusterID:   cluster.ClusterID,
-			ClusterNum:  clusterNum,
-			Name:        cluster.ClusterName,
-			Creator:     cluster.Creator,
-			Description: cluster.Description,
-			Type:        "k8s",
-			Environment: "prod",
-			AreaID:      1,
-			Status:      cluster.Status,
-			MasterIPs:   masterData,
-		})
-	if err != nil {
-		blog.Errorf("sync cluster %s[%s] to bcs cc failed, %v", cluster.ClusterName, cluster.ClusterID, err)
-		return err
-	}
-
-	err = components.UpdateCluster(op.BCSCc.Addr, cluster.ProjectID, cluster.ClusterID, resp.Data.AccessToken, op.Debug,
-		&components.ClusterParamsRequest{
-			Status: "normal",
-		})
-	if err != nil {
-		blog.Errorf("update %s[%s] status in bcs cc failed, %v", cluster.ClusterName, cluster.ClusterID, err)
-		return err
-	}
-
-	return nil
-}
+//func createClusterInCc(op *options.UpgradeOption, cluster types.ClusterM) error {
+//	blog.Infof("sync cluster %s[%s] to bcs cc", cluster.ClusterName, cluster.ClusterID)
+//
+//	resp, err := components.GetAccessToken(op.BCSCc, op.Debug)
+//	if err != nil {
+//		blog.Errorf("get access token failed")
+//		return err
+//	}
+//
+//	masterData := make([]components.CreateMasterData, 0)
+//	for ip, _ := range cluster.Master {
+//		masterData = append(masterData, components.CreateMasterData{
+//			InnerIP: ip,
+//			Status:  "normal",
+//		})
+//	}
+//
+//	clusterNum, _ := strconv.Atoi(strings.TrimPrefix(cluster.ClusterID, "BCS-K8S-"))
+//	_, err = components.SyncClusterToCc(op.BCSCc.Addr, cluster.ProjectID, resp.Data.AccessToken, op.Debug,
+//		&components.SyncClusterReq{
+//			ProjectID:   cluster.ProjectID,
+//			ClusterID:   cluster.ClusterID,
+//			ClusterNum:  clusterNum,
+//			Name:        cluster.ClusterName,
+//			Creator:     cluster.Creator,
+//			Description: cluster.Description,
+//			Type:        "k8s",
+//			Environment: "prod",
+//			AreaID:      1,
+//			Status:      cluster.Status,
+//			MasterIPs:   masterData,
+//		})
+//	if err != nil {
+//		blog.Errorf("sync cluster %s[%s] to bcs cc failed, %v", cluster.ClusterName, cluster.ClusterID, err)
+//		return err
+//	}
+//
+//	err = components.UpdateCluster(op.BCSCc.Addr, cluster.ProjectID, cluster.ClusterID, resp.Data.AccessToken, op.Debug,
+//		&components.ClusterParamsRequest{
+//			Status: "normal",
+//		})
+//	if err != nil {
+//		blog.Errorf("update %s[%s] status in bcs cc failed, %v", cluster.ClusterName, cluster.ClusterID, err)
+//		return err
+//	}
+//
+//	return nil
+//}
 
 func (app *App) processDupClusters(dupClusters, success, failed []types.ClusterM, changedClusters map[string]string) (
 	[]types.ClusterM, []types.ClusterM) {
@@ -402,11 +402,11 @@ func (app *App) processDupClusters(dupClusters, success, failed []types.ClusterM
 				failed = append(failed, c)
 				continue
 			}
-			err = createClusterInCc(app.op, c)
-			if err != nil {
-				failed = append(failed, c)
-				continue
-			}
+			//err = createClusterInCc(app.op, c)
+			//if err != nil {
+			//	failed = append(failed, c)
+			//	continue
+			//}
 			success = append(success, c)
 		}
 	}
