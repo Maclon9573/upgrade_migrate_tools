@@ -63,6 +63,7 @@ type MongoDBConf struct {
 // KubeAgent bcs kube agent configuration
 type KubeAgent struct {
 	Enable          bool              `json:"enable"`
+	NginxProxy      bool              `json:"nginx_proxy,omitempty"`
 	YamlPath        string            `json:"yaml_path"`
 	HelmPackagePath string            `json:"helm_package_path"`
 	Namespace       string            `json:"namespace"`

@@ -603,8 +603,32 @@ func createKubeAgent(op *options.UpgradeOption, clientset *kubernetes.Clientset,
 	if len(gAddr) != 2 {
 		return fmt.Errorf("invalid bcs api gateway address")
 	}
+
+	var nginxProxyIP string
+	if op.KubeAgent.NginxProxy {
+		for i, c := range oldDeployment.Spec.Template.Spec.Containers {
+			if c.Name == "bcs-kube-agent" {
+				for _, v := range oldDeployment.Spec.Template.Spec.Containers[i].Args {
+					if strings.Contains(v, "--bke-address") {
+						bkeInfo := strings.Split(v, "//")
+						if len(bkeInfo) != 2 {
+							return fmt.Errorf("origin kube agent deployment bke-address %s not valid", v)
+						}
+						nginxProxyIP = strings.Split(bkeInfo[1], ":")[0]
+					}
+				}
+			}
+		}
+	}
+
 	hostAliaas := []corev1.HostAlias{}
-	if op.BCSApiGateway.IP != "" {
+	if len(nginxProxyIP) != 0 {
+		hostAliaas = append(hostAliaas, corev1.HostAlias{
+			IP:        nginxProxyIP,
+			Hostnames: []string{gAddr[1]},
+		})
+	}
+	if op.BCSApiGateway.IP != "" && !op.KubeAgent.NginxProxy {
 		hostAliaas = append(hostAliaas, corev1.HostAlias{
 			IP:        op.BCSApiGateway.IP,
 			Hostnames: []string{gAddr[1]},

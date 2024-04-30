@@ -9,6 +9,7 @@ replace (
 
 require (
 	github.com/Tencent/bk-bcs/bcs-common v0.0.0-20210818040851-76fdc539dc33
+	github.com/golang/protobuf v1.5.3
 	github.com/jinzhu/gorm v1.9.16
 	github.com/parnurzeal/gorequest v0.2.16
 	go.mongodb.org/mongo-driver v1.9.0
@@ -33,7 +34,6 @@ require (
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/btree v1.0.1 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect

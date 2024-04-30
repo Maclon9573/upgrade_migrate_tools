@@ -14,6 +14,8 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"os"
 	"runtime"
 
@@ -24,7 +26,29 @@ import (
 	"github.com/Tencent/bk-bcs/install/upgradetool/options"
 )
 
+var (
+	VERSION    string
+	BUILD_TIME string
+	GO_VERSION string
+	GIT_HASH   string
+)
+
+func parseFlag() {
+	var printVersion bool
+	flag.BoolVar(&printVersion, "version", false, "version info")
+	flag.Parse()
+
+	if printVersion {
+		fmt.Printf("Version: %s\n", VERSION)
+		fmt.Printf("Git commit: %s\n", GIT_HASH)
+		fmt.Printf("Go version: %s\n", GO_VERSION)
+		fmt.Printf("Build time: %s\n", BUILD_TIME)
+		os.Exit(0)
+	}
+}
+
 func main() {
+	parseFlag()
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	op := &options.UpgradeOption{}

@@ -30,6 +30,7 @@
   "bcs_cert_name": "",
   "kube_agent": {
     "enable": true,
+    "nginx_proxy": true,
     "yaml_path": "",
     "namespace": "",
     "version": "",
