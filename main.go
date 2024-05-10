@@ -14,7 +14,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"runtime"
@@ -35,8 +34,8 @@ var (
 
 func parseFlag() {
 	var printVersion bool
-	flag.BoolVar(&printVersion, "version", false, "version info")
-	flag.Parse()
+	//flag.BoolVar(&printVersion, "version", false, "version info")
+	//flag.Parse()
 
 	if printVersion {
 		fmt.Printf("Version: %s\n", VERSION)

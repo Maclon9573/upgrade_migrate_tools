@@ -11,10 +11,10 @@ GOVERSION=$(shell go version)
 WORKSPACE=$(shell pwd)
 
 
-export LDFLAG=-ldflags "-X 'main.VERSION=${VERSION}' \
--X 'main.GIT_HASH=${GITHASH}' \
--X 'main.GO_VERSION=${GOVERSION}' \
--X 'main.BUILD_TIME=${BUILDTIME}'"
+export LDFLAG=-ldflags "-X 'github.com/Tencent/bk-bcs/bcs-common/common/version.BcsVersion=${VERSION}' \
+-X 'github.com/Tencent/bk-bcs/bcs-common/common/version.BcsGitHash=${GITHASH}' \
+-X 'github.com/Tencent/bk-bcs/bcs-common/common/version.BcsTag=${VERSION}' \
+-X 'github.com/Tencent/bk-bcs/bcs-common/common/version.BcsBuildTime=${BUILDTIME}'"
 
 export PACKAGEPATH=./build/tools.${VERSION}
 
