@@ -106,16 +106,19 @@ func (app *App) DoMigrate() error {
 		return err
 	}
 
-	blog.Debug("got %d changed clusters: %v", len(changedClusters), changedClusters)
+	blog.Infof("got %d changed clusters: %v", len(changedClusters), changedClusters)
 
 	// deploy bcs kube agent
 	if app.op.KubeAgent.Enable {
 		blog.Infof("deploy new bcs kube agent enabled")
-
 		blog.Infof("will deploy new bcs kube agent on %d clusters", len(successClusters))
 		for _, c := range successClusters {
 			err := deployKubeAgent(app.op, c, changedClusters)
 			if err != nil {
+				if strings.Contains(err.Error(), "already exists") {
+					blog.Infof("deploy kube agent for cluster %s success, %v", c.ClusterID, err)
+					continue
+				}
 				blog.Errorf("deploy kube agent for cluster %s failed, %v", c.ClusterID, err)
 			}
 		}
@@ -182,8 +185,9 @@ func (app *App) migrateClusters() ([]types.ClusterM, map[string]string, error) {
 	clusterCol := app.mongoClient.Database(mongoDBNameCluster).Collection(mongoDBCollectionNameCluster)
 	clusters := make([]types.Cluster, 0)
 	successClusters := make([]types.ClusterM, 0)
+	existedClusters := make([]types.ClusterM, 0)
 	failedClusters := make([]types.ClusterM, 0)
-	changedClusters := make(map[string]string, 0)
+	changedClusters := make(map[string]string)
 
 	if len(app.op.ProjectIDs) != 0 {
 		app.sqlClient.Model(&types.Cluster{}).Where("project_id IN (?) AND status = ?", app.op.ProjectIDs, "normal").Find(&clusters)
@@ -233,26 +237,31 @@ func (app *App) migrateClusters() ([]types.ClusterM, map[string]string, error) {
 		// 重复执行可能存在clusterID变更而且已经迁移的情况
 		for _, cm := range existClustersMongo {
 			if cm.ProjectID == c.ProjectID && cm.ClusterName == c.Name &&
-				cm.Description == c.Description && c.ClusterID != cm.ClusterID {
-				changedClusters[cm.ClusterID] = c.ClusterID
-				blog.Infof("clusterID of cluster[%s] changed from %s to %s", c.Name, c.ClusterID, cm.ClusterID)
-				clusterM.ClusterID = cm.ClusterID
-				successClusters = append(successClusters, clusterM)
+				cm.Description == c.Description {
+				if c.ClusterID != cm.ClusterID {
+					changedClusters[cm.ClusterID] = c.ClusterID
+					blog.Infof("clusterID of cluster[%s] changed from %s to %s", c.Name, c.ClusterID, cm.ClusterID)
+					clusterM.ClusterID = cm.ClusterID
+					existedClusters = append(existedClusters, clusterM)
+					blog.Infof("cluster %s[%s] imported already, skipping...",
+						clusterM.ClusterName, clusterM.ClusterID)
+					exist = true
+					break
+				}
+				existedClusters = append(existedClusters, clusterM)
+				blog.Infof("cluster %s[%s] imported already, skipping...",
+					clusterM.ClusterName, clusterM.ClusterID)
 				exist = true
 				break
 			}
 		}
 
-		if app.op.MigrateClusterData {
-			if exist {
-				blog.Infof("cluster %s[%s] imported already, skipping...",
-					clusterM.ClusterName, clusterM.ClusterID)
-				continue
-			}
+		if !exist && app.op.MigrateClusterData {
 			masters, err := getMasterNodes(app.op, clusterM, changedClusters)
 			if err != nil {
 				blog.Errorf("get master nodes for cluster %s[%s] failed, %v",
 					clusterM.ClusterName, clusterM.ClusterID, err)
+				failedClusters = append(failedClusters, clusterM)
 				continue
 			}
 			clusterM = addClusterInfo(masters, clusterM)
@@ -268,17 +277,13 @@ func (app *App) migrateClusters() ([]types.ClusterM, map[string]string, error) {
 				continue
 			}
 
-			//err = createClusterInCc(app.op, clusterM)
-			//if err != nil {
-			//	failedClusters = append(failedClusters, clusterM)
-			//	continue
-			//}
 			successClusters = append(successClusters, clusterM)
 		}
 	}
 
 	successClusters, failedClusters = app.processDupClusters(dupClusters, successClusters, failedClusters, changedClusters)
 	blog.Infof("migrated %d clusters", len(successClusters))
+	blog.Infof("existed %d clusters", len(existedClusters))
 	blog.Infof("%d clusters failed: %v", len(failedClusters), failedClusters)
 
 	return successClusters, changedClusters, nil
@@ -331,55 +336,6 @@ func addClusterInfo(masters []*corev1.Node, cluster types.ClusterM) types.Cluste
 	return cluster
 }
 
-//func createClusterInCc(op *options.UpgradeOption, cluster types.ClusterM) error {
-//	blog.Infof("sync cluster %s[%s] to bcs cc", cluster.ClusterName, cluster.ClusterID)
-//
-//	resp, err := components.GetAccessToken(op.BCSCc, op.Debug)
-//	if err != nil {
-//		blog.Errorf("get access token failed")
-//		return err
-//	}
-//
-//	masterData := make([]components.CreateMasterData, 0)
-//	for ip, _ := range cluster.Master {
-//		masterData = append(masterData, components.CreateMasterData{
-//			InnerIP: ip,
-//			Status:  "normal",
-//		})
-//	}
-//
-//	clusterNum, _ := strconv.Atoi(strings.TrimPrefix(cluster.ClusterID, "BCS-K8S-"))
-//	_, err = components.SyncClusterToCc(op.BCSCc.Addr, cluster.ProjectID, resp.Data.AccessToken, op.Debug,
-//		&components.SyncClusterReq{
-//			ProjectID:   cluster.ProjectID,
-//			ClusterID:   cluster.ClusterID,
-//			ClusterNum:  clusterNum,
-//			Name:        cluster.ClusterName,
-//			Creator:     cluster.Creator,
-//			Description: cluster.Description,
-//			Type:        "k8s",
-//			Environment: "prod",
-//			AreaID:      1,
-//			Status:      cluster.Status,
-//			MasterIPs:   masterData,
-//		})
-//	if err != nil {
-//		blog.Errorf("sync cluster %s[%s] to bcs cc failed, %v", cluster.ClusterName, cluster.ClusterID, err)
-//		return err
-//	}
-//
-//	err = components.UpdateCluster(op.BCSCc.Addr, cluster.ProjectID, cluster.ClusterID, resp.Data.AccessToken, op.Debug,
-//		&components.ClusterParamsRequest{
-//			Status: "normal",
-//		})
-//	if err != nil {
-//		blog.Errorf("update %s[%s] status in bcs cc failed, %v", cluster.ClusterName, cluster.ClusterID, err)
-//		return err
-//	}
-//
-//	return nil
-//}
-
 func (app *App) processDupClusters(dupClusters, success, failed []types.ClusterM, changedClusters map[string]string) (
 	[]types.ClusterM, []types.ClusterM) {
 	clusterCol := app.mongoClient.Database(mongoDBNameCluster).Collection(mongoDBCollectionNameCluster)
@@ -402,14 +358,10 @@ func (app *App) processDupClusters(dupClusters, success, failed []types.ClusterM
 				failed = append(failed, c)
 				continue
 			}
-			//err = createClusterInCc(app.op, c)
-			//if err != nil {
-			//	failed = append(failed, c)
-			//	continue
-			//}
 			success = append(success, c)
 		}
 	}
+
 	return success, failed
 }
 
