@@ -1,54 +1,42 @@
-# BCS集群迁移工具
+## 背景
 
-### 背景
-
-BCS现采用容器化部署，与老版本之间版本跨度较大，无法平滑升级。
+BCS v1.28+采用容器化部署，与二进制版本（v1.18）差异较大，无法进行平滑升级。需要使用BCS迁移工具(见附件)进行集群迁移。
 
 **注意：**
+本方案只迁移BCS的数据，容器管理平台依赖的周边产品的数据由其他产品自行迁移。如：CMDB的业务信息、权限中心的用户权限。
 
-- 本方案只迁移BCS的数据，容器管理平台依赖的CMDB业务数据，新旧环境的业务ID需要一致。
 
-迁移工具网络要求：
-
-| 目标                                                         | 端口         |
-| ------------------------------------------------------------ | ------------ |
-| 旧环境bcs api的8443端口                                      | 8443         |
-| 旧环境bcs cc所用的mysql                                      | 3306（默认） |
-| 新环境bcs api（bcs-api.xxx.com）、bcs cc（bcs-cc.xxx.com）、bkssm（bkssm.xxx.com） | 80/443       |
-| 新环境bcs使用的MongoDB                                       | 27017        |
-
-### 环境信息
+## 环境信息
 
 旧版本：v1.18
 
-新版本：v1.28+
+新版本：v1.29
 
-### 方案设计
+## 方案设计
 
-1. 迁移旧环境中mysql数据库的projects和clusters信息到新环境的MongoDB中
-2. 在k8s集群中部署第二套bcs-kube-agent，上报证书、token信息到新环境中
-3. 在各个集群中部署第二套bcs-k8s-watch，上报集群资源（开发中）
-4. 删除旧版本的bcs-kube-agent、bcs-k8s-watch
+1.  迁移旧环境中mysql数据库的projects和clusters信息到新环境的MongoDB中
+2.  在k8s集群中部署第二套bcs-kube-agent，上报证书、token信息到新环境中
 
-### 架构设计
-![img.png](img.png)
 
-### 迁移工具使用方法
+## 架构设计
+![image.png](./img.png)
+## 网络要求
 
-编译
+|目标|端口|备注|
+|-|-|-|
+|旧环境bcs api|8443（默认）|content3|
+|旧环境bcs cc所用的mysql|3306（默认）|content3|
+|新环境bcs api（bcs-api.xxx.com）|80/443（默认）|content3|
+|新环境bcs使用的MongoDB|27017（默认）|content3|
 
-```
-go build -o cluster-migrate-tool main.go
-```
+
+## 使用方法
 
 执行命令：
 
-```
 ./cluster-migrate-tool -f conf.json
-```
 
 conf.json配置说明：
-
 ```
 {
   "alsologtostderr": true,  // 打印日志到标准输出
@@ -87,53 +75,48 @@ conf.json配置说明：
     "namespace": "bcs-nodes",   // bcs kube agent命名空间，需要与老版本一致
     "version": "",   // 新版本号,如v1.29.0
     "images": {  // 适用于新老版本使用了不同的镜像仓库,否则无需填写
-      // clusterID为老版本的clusterID, 镜像地址为新版本的镜像地址
-      "BCS-K8S-40000": "xxx/bcs-kube-agent",
+      "BCS-K8S-40000": "xxx/bcs-kube-agent", // clusterID为老版本的clusterID, 镜像地址为新版本的镜像地址
       "BCS-K8S-40001": "xxx/xxx/bcs-kube-agent"
     }
   }
 }
 ```
+**注意：**
 
-说明：
+- 可以更改需要配置kube agent的Deployment，如修改nodeAffinity、resources等
 
-- 可以根据需要更改kube agent的Deployment，如修改nodeAffinity、resources等
-
-#### **二进制版本的bcs api的认证token**
+#### 获取二进制版本的bcs api的认证token
 
 方法一：从bcs api的数据库bke_core的user_tokens表中获取，value字段即为token信息
 
 方法二：在bcs-cc的配置文件(一般为/data/bkee/etc/bcs/cc.yml)中，最后一行Bearer后面即为admin token
 
-#### 容器化版本的bcs api gateway token
+#### 获取容器化版本的bcs api gateway token
 
 使用webconsole登录蓝鲸集群，执行
 
-```
 kubectl get secrets -n bcs-system bcs-password -oyaml |awk '/  gateway_token:/ {print $2}'| base64 -d
-```
 
-#### bcs_cert_name获取
+#### 获取bcs_cert_name
 
 使用webconsole登录蓝鲸集群，执行
 
-```
 kubectl get deployments.apps -n bcs-system bcs-kube-agent -oyaml
-```
 
 volume：bcs-certs使用的secret name即为bcs_cert_name。
-
-      volumes:
-	  - name: bcs-certs
-	    projected:
-	      defaultMode: 420
-	      sources:
-	      - secret:
-	          items:
-	          - key: ca.crt
-	            path: bcs-ca.crt
-	          - key: tls.crt
-	            path: bcs-client.crt
-	          - key: tls.key
-	            path: bcs-client.key
-	          name: bcs-client-bcs-services-stack # 该值即为bcs_cert_name
+```
+ volumes:  
+ - name: bcs-certs  
+ projected:  
+ defaultMode: 420  
+ sources:  
+ - secret:  
+ items:  
+ - key: ca.crt  
+ path: bcs-ca.crt  
+ - key: tls.crt  
+ path: bcs-client.crt  
+ - key: tls.key  
+ path: bcs-client.key  
+ name: bcs-client-bcs-services-stack # 该值即为bcs_cert_name
+```
