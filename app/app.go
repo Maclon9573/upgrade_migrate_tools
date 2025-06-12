@@ -257,14 +257,6 @@ func (app *App) migrateClusters() ([]types.ClusterM, map[string]string, error) {
 		}
 
 		if !exist && app.op.MigrateClusterData {
-			masters, err := getMasterNodes(app.op, clusterM, changedClusters)
-			if err != nil {
-				blog.Errorf("get master nodes for cluster %s[%s] failed, %v",
-					clusterM.ClusterName, clusterM.ClusterID, err)
-				failedClusters = append(failedClusters, clusterM)
-				continue
-			}
-			clusterM = addClusterInfo(masters, clusterM)
 			_, err = clusterCol.InsertOne(context.Background(), clusterM)
 			if err != nil {
 				if strings.Contains(err.Error(), "duplicate key") {
